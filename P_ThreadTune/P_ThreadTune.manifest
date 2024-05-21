@@ -1,0 +1,13 @@
+{
+	"autodeskProduct":	"Fusion",
+	"type":	"addin",
+	"id":	"351e8046-f001-4275-b339-90aacd7d5cbd",
+	"author":	"David Bunch",
+	"description":	{
+		"":	"Fine-tune your screw thread designs"
+	},
+	"version":	"1.0",
+	"runOnStartup":	false,
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}

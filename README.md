@@ -27,7 +27,7 @@ The most common use of this program for me anyway is to have a different diamete
 ![ThreadTune_TestRun](https://github.com/geodave810/P_ThreadTune/assets/13069472/65711d0e-00a0-4018-bdee-cf31613d7b88)
 
 Using the Helex guide rail instead of the vertical centerline will require less points for the spline points to be accurate.  18 - 36 spline points is usually sufficent with the Helix guiderail, but you will need at least 36-45 spline points when using the vertical centerline for it to be accurate.  Using a different angle for the top & bottom of the thread you will need to use the vertical centerline for it to work.  The exception here is using 0 for the top and/or bottom angle either type of guide rail will work.  If there was a helix you could draw in sketch mode for fusion 360 which there does not seem to be at the moment, the curvature would probably be quite accurate.  AutoCAD seems to have the ability to draw a helix, so maybe it will be added one day.<br>
-![Thread_Types_800x600](https://github.com/geodave810/P_ThreadTune/assets/13069472/7d33e840-cd79-45d5-8b4d-3aefab66ddd8)
+![P_Thread_Types_800x600](https://github.com/geodave810/P_ThreadTune/assets/13069472/6a7c3e2f-fd54-495e-970b-8786e7d4d83f)
 <br>
 
 This program draws the thread at 0,0,0 and only draws the threads.  A cylinder is drawn with inner radius of threads & the threads are cut flush with the top & bottom of the cylinder.  There is a file **DialogInput.txt** that saves your current dialog input parameters to set as the defaults for the next time you use the program.  This file is saved in the same folder as the running program.

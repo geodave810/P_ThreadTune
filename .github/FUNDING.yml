@@ -1,5 +1,2 @@
 github: [geodave, P_ThreadTune]
-paypal: "https://www.paypal.me/geodave810"
-custom: 
-  - url: "https://www.zewind.com/audio.htm"
-    label: Link to my Mountain Streams Audio Recordings.
+custom: ["https://www.paypal.me/geodave810"]

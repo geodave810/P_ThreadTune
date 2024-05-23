@@ -13,6 +13,8 @@ You can create threads with most any angle as well as using different angles for
 
 How this works is that it draws a profile of the threads for the full length of the screw.  Then it draws a helix for the path of that thread profile following the inside edge of that profile & either another helix along the outside radius of that profile for the guide rail or a vertical Centerline.  The more spline points you use the more accurate the thread will be for the full length of the thread.  Interestingly enough, I can use 18 spline points with the outside helix as the guide rail & get about the same accuracy using 45 spline points with the vertical centerline guide rail.  I have the default currently set to Centerline Guide rail & 36 spline points.  You can also have a helix that is drawn for just one revolution of the thread or a Long helix with the same revolutions of the entire screw.  The one revolution helix is much faster & probaby just as accurate.  The long helix can bog down fusion & even crash it.
 
+Since the thread profiles are on the timeline, you can fine tune these even further by changing the thread profiles even further like changing one or more of the lines in the profile to a curve between the points.  The start of each helix just needs to attach to part of the sweeping thread.
+
 This program is setup as an Add-In in Autodesk Fusion 360.  To install this, copy the file structure to:
 C:\Users\<UserName>\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns
 After you copied the files, your folder structure should look like this.<br>

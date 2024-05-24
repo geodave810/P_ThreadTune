@@ -98,9 +98,7 @@ def Real_offset(pts):
         vertex_point = line_intersection(offsets[i], offsets[i + 1])
         vertex_points.append(vertex_point)
     return vertex_points
-#########################################################################################
-##########  Following routines above were generated from ChatGPT on 5/13/2024  ##########
-#########################################################################################
+##########################################################################
 def draw_regular_polygon(sketch, num_sides, rad):
 # Calculate the coordinates of the polygon's vertices
     angle_offset = math.pi / num_sides
@@ -117,7 +115,9 @@ def draw_regular_polygon(sketch, num_sides, rad):
         end_point = vertices[(i + 1) % num_sides]
         lines.append(sketch.sketchCurves.sketchLines.addByTwoPoints(start_point, end_point))
     return lines
-##########################################################################
+#########################################################################################
+##########  Following routines above were generated from ChatGPT on 5/13/2024  ##########
+#########################################################################################
 def create_offset_plane_from_xy(construction_plane, offset_distance):
 # Get the construction planes collection.
     planes = subComp1.constructionPlanes
@@ -353,7 +353,7 @@ def Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag):
         body1 = sweeper.bodies.item(0)
         body1.name = Body_Name                  # rename body to most of input parameters from main routine
 ###################################################################
-def DrawHelix(Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, iflag):
+def DrawHelix(Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, prof, iflag):
     global sketchSplines
     global Vert_Line
     P10 = adsk.core.Point3D.create(0,0,Ht1 + .1)
@@ -365,33 +365,36 @@ def DrawHelix(Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, iflag):
     P0 = adsk.core.Point3D.create(0,0,0)
     Vert_Line = sketchCenter.addByTwoPoints(P0,P10)         # Draw Center Vertical for Guide Rail with Sweeep
     Z0 = 0.0
-    prof = sketch_Profile.profiles.item(0)
+    #prof = sketch_Profile.profiles.item(0)
     Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag)    # Now draw the Helix
     if iflag == 0:
         body1.name = Body_Name                      # rename body to most of input parameters from main routine
 ##########################################################################
 def ReCalcHelixPitch(idx):
-    idx_array = [1, 2, 4]                      # 1 start, 2 start, 4 start
+    idx_array = [1, 2, 4]                           # 1 start, 2 start, 4 start
     x = idx_array[idx]
-    _pitch.text = pitch
-    _pitHelix.text = str(float(_pitch.text) * x)
-def CalcThread():
+    pit = _pitch.text         # ReCalcHelix does not access global variable pitch for some reason, so get it from dialog box
+    _pitHelix.text = str(float(pit) * x)    # Set the pitch of the helix
+def CalcThread(iTest):
     diameter = _diameter.text
     pitch = _pitch.text
     OD = float(diameter)
-    PitHlx = float(pitHelix)
-    PitHlx1 = PitHlx * .1
-    calcPts(OD, float(pitch), PitHlx1, 0)
+    PitHlx = float(pitHelix)                        # Convert helix pitch to floating point
+    PitHlx1 = PitHlx * .1                           # Convert helix pitch to mm
+    calcPts(OD, float(pitch), PitHlx1, 0)           # Calculates P1, P2, P3, P4 used here
     X_Dist = (abs(P2.x) - abs(P1.x)) * 10.0
     if AngT < 0 or AngB < 0:
         Y_Dist = abs((abs(P3.y) + abs(P2.y)) * 10.0)
     else:
         Y_Dist = abs((abs(P4.y) + abs(P1.y)) * 10.0)
-    F_Cham_Wid = (X_Dist * 1.5)
-    Cham_Wid = "{:.4f}".format(F_Cham_Wid)
     Thread_Wid = "{:.4f}".format(X_Dist)
     Thread_Ht = "{:.4f}".format(Y_Dist)
-    _Cham_Wid.text = Cham_Wid
+ # Only change Cham_Wid initially when iTest == 0
+ # otherwise the update routine that calls this will change it
+    if iTest == 0:
+        F_Cham_Wid = (X_Dist * 1.5)
+        Cham_Wid = "{:.4f}".format(F_Cham_Wid)
+        _Cham_Wid.text = Cham_Wid
     _Thread_Wid.text = Thread_Wid
     _Thread_Ht.text = Thread_Ht
 ##########################################################################
@@ -509,9 +512,10 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
         R_Min = pts[7]                  # calcPts(0) does not seem to work & does not make sense to me
         global sketch_Helix
         global sketch_Profile
-        #msg = f'P1.x = {P1.x}   P1.y = {P1.y}<br>P2.x = {P2.x}   P2.y = {P2.y}<br>P3.x = {P3.x}   P3.y = {P3.y}<br>P4.x = {P4.x}   P4.y = {P4.y}'
-        #ui.messageBox(msg)
+        i_Error = 0
         if RL_Check == 'Y' and iflag == 1:
+            #msg = f'Before Call -- P1.x = {P1.x}   P1.y = {P1.y}<br>P2.x = {P2.x}   P2.y = {P2.y}<br>P3.x = {P3.x}   P3.y = {P3.y}<br>P4.x = {P4.x}   P4.y = {P4.y}<br>P5.x = {P5.x}   P5.y = {P5.y}'
+            #ui.messageBox(msg)
             P100 = adsk.core.Point3D.create(P1.x, P1.y + 1.0, 0)
             P101 = P1
             P102 = P2
@@ -530,8 +534,14 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
             Rad = P2.x * 10.0
             P00 = adsk.core.Point3D.create(X0,P1.y,0)
             P5 = adsk.core.Point3D.create(P4.x, P1.y - PitHlx1, 0)
-        #     msg = f'X100.x = {P100.x}<br>P100.y = {P100.y}<br>P101.x = {P101.x}<br>P101.y = {P101.y}<br>P102.x = {P102.x}<br>P102..y = {P102.y}<br>P103.x = {P103.x}<br>P103.y = {P103.y}<br>P104.x = {P104.x}<br>P104.y = {P104.y}<br>P105.x = {P105.x}<br>P105.y = {P105.y}'
-        #     ui.messageBox(msg)
+            P4_y = abs(P4.y)            # Make positive to be less confusing in If Statement
+            P5_y = abs(P5.y)
+            if P5_y < P4_y:
+                i_Error = 1
+                Err_Dist = (P4_y - P5_y) * 10.0
+                S_Dist = "{:.4f}".format(Err_Dist)
+                msg = f'Female Profiles will overlap with using Real Offsets<br>Try increasing Helix Pitch, decreasing M/F Thread Gap<br>or UNCHECK Use Real Offset of Threads<br><br>Overlap Distance = {S_Dist}mm'
+                ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
 # Create a new 3D sketch.
         sketches = subComp1.sketches
         xyPlane = subComp1.xYConstructionPlane
@@ -554,13 +564,30 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
 # on last iteration, we do not want to draw between point P4 & P5
                 if i == rev-1:
                     points = [P1, P2, P3, P4]
-                move_points_by_y(points, PitHlx * .1)                    # Move all 4 points up in Y direction Pitch amount
-                draw_lines_between_points(sketch_Profile, points, iflag)       # Draw the next thread
+                move_points_by_y(points, PitHlx * .1)                       # Move all 4 points up in Y direction Pitch amount
+                draw_lines_between_points(sketch_Profile, points, iflag)    # Draw the next thread
         Y4 = P4.y
         P6 = adsk.core.Point3D.create(X0, Y4, 0)                            # P6 is vertical to P00
         sketch_Profile.sketchCurves.sketchLines.addByTwoPoints(P4, P6)      # Draw short horizontal line to be perpendicular to P00
         sketch_Profile.sketchCurves.sketchLines.addByTwoPoints(P6, P00)     # close profile
-        DrawHelix(Rad, PitHlx, Ht, Ht1, sPts, G_Rail, RL_thread, iflag)
+        largest_profile = sketch_Profile.profiles.item(0)
+        if i_Error == 1:
+# Get the profiles in the sketch
+            profiles = sketch_Profile.profiles
+            num_profiles = profiles.count
+# Initialize variables to track the largest profile and its area
+            largest_profile = None
+            largest_area = 0
+# Iterate through each profile to find the one with the largest area
+            for prof in profiles:
+# Calculate the area of the profile
+                area_properties = prof.areaProperties(adsk.fusion.CalculationAccuracy.HighCalculationAccuracy)
+                area = area_properties.area
+# Check if this profile has the largest area so far
+                if area > largest_area:
+                    largest_area = area
+                    largest_profile = prof
+        DrawHelix(Rad, PitHlx, Ht, Ht1, sPts, G_Rail, RL_thread, largest_profile, iflag)
         DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char)
         if iST_Char > 1:
             CopRot_Threads(iST_Char)
@@ -724,7 +751,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 
     cmd = args.command    
     inputs = cmd.commandInputs
-    cmd.setDialogInitialSize(380, 630)
+    cmd.setDialogInitialSize(380, 662)
 # Create tab input 1
     tabCmdInput1 = inputs.addTabCommandInput('_Threads', 'Threads')
     tab1ChildInputs = tabCmdInput1.children
@@ -852,7 +879,6 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     tab2ChildInputs.addTextBoxCommandInput('Nut_Sides', '# of Sides of Nut: ', Nut_Sides, 1, False)
     _NutFlat_Dia = tab2ChildInputs.addTextBoxCommandInput('NutFlat_Dia', 'Nut Flat Dia: ', NutFlat_Dia, 1, False)
     _NutHd_Ht = tab2ChildInputs.addTextBoxCommandInput('NutHd_Ht', 'Nut Height: ', NutHd_Ht, 1, False)
-    _MF_Gap = tab2ChildInputs.addTextBoxCommandInput('MF_Gap', 'M/F thread Gap: ', MF_Gap, 1, False)
 # Create dropdown input with test list style.
     dropdownInput1 = tab1ChildInputs.addDropDownCommandInput('GuideRail', 'Helix, Centerline or Long Helix Guide:', adsk.core.DropDownStyles.TextListDropDownStyle);
     dropdown1Items = dropdownInput1.listItems
@@ -903,11 +929,12 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         tab1ChildInputs.addBoolValueInput('_ChamNut', 'Chamfer Nut', True, '', True)
     else:
         tab1ChildInputs.addBoolValueInput('_ChamNut', 'Chamfer Nut', True, '', False)
+    _MF_Gap = tab1ChildInputs.addTextBoxCommandInput('MF_Gap', 'M/F thread Gap: ', MF_Gap, 1, False)
     if RL_Check == 'Y':
         tab1ChildInputs.addBoolValueInput('_RealOffset', 'Use Real Offset of Threads', True, '', True)
     else:
         tab1ChildInputs.addBoolValueInput('_RealOffset', 'Use Real Offset of Threads', True, '', False)
-    CalcThread()
+    CalcThread(0)
 # Connect to event handlers
     futil.add_handler(args.command.execute, command_execute, local_handlers=local_handlers)
     futil.add_handler(args.command.inputChanged, command_input_changed, local_handlers=local_handlers)
@@ -1076,14 +1103,19 @@ def command_preview(args: adsk.core.CommandEventArgs):
     # General logging for debug.
     futil.log(f'{CMD_NAME} Command Preview Event')
     inputs = args.command.commandInputs
-# This event handler is called when the user changes anything in the command dialog
-# allowing you to modify values of other inputs based on that change.
-            #Connect handler to inputChanged event
+# These are all the inputs that are currently checked when they change in the dialog box
+# MetTpe, diameter, pitch, angleTop, angleBot, Starts
+# WhatType, height, pitHelix, splinePts, GuideRail, RightLeft, Cham_Wid, _ChamThread, _ChamNut, _RealOffset
+# APITabBar, Bolt_Sides, BoltFlat_Dia, BoltHd_Ht, Nut_Sides, NutFlat_Dia, NutHd_Ht, MF_Gap
 def command_input_changed(args: adsk.core.InputChangedEventArgs):
     changed_input = args.input
     #msg = f'args.input.id = {args.input.id}'
     #ui.messageBox(msg)
-    if args.input.id == 'MetType':
+    a_ID = args.input.id                    # Shorten name, since we test this a lot
+    i_Calc = 0
+    if a_ID == 'MetType' or a_ID == 'diameter' or a_ID == 'pitch' or a_ID == 'angleTop' or a_ID == 'angleBot' or a_ID =='Starts':
+        i_Calc = 1
+    if a_ID == 'MetType':
         Met_ID = dropDownCommandInput.selectedItem.index
         Met_ID = Met_ID + 1
 
@@ -1102,6 +1134,7 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
 # Set all the appropriate text boxes
         _diameter.text = diameter
         _pitch.text = pitch
+        _pitHelix.text = pitch                       # Decided to reset Helix Pitch to pitch when user changes Metric Thread Type
         _BoltFlat_Dia.text = BoltFlat_Dia
         _BoltHd_Ht.text = BoltHd_Ht
         _NutFlat_Dia.text = NutFlat_Dia
@@ -1109,10 +1142,14 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
         _Cham_Wid.text = Cham_Wid
         _Thread_Wid.text = Thread_Wid
         _Thread_Ht.text = Thread_Ht
+        i_Calc = 1
     elif args.input.id == 'Starts':
         IDX = dropdownInput3.selectedItem.index
+        #pitch = _pitch.text                         # ReCalcHelix does not access global variable pitch for some reason, so send it to it
         ReCalcHelixPitch(IDX)
-    CalcThread()
+# Only run this routine when we need to
+    if i_Calc == 1:
+        CalcThread(1)
 # General logging for debug.
     futil.log(f'{CMD_NAME} Input Changed Event fired from a change to {changed_input.id}')
 # This event handler is called when the user interacts with any of the inputs in the dialog

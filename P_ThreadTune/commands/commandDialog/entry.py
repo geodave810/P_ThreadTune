@@ -220,12 +220,11 @@ def ChamferNut(Pit, Ht, Ch_Wid, iTY_Char):
     else:
         Ch_Wid = abs(Ch_Wid)
         Pit1 = Pit * .1
-
         Ht1 = (Ht + .01) * .1
         Ht1 = (Ht + .01) * .1 + Pit1
         Pt1 = Pit1 - .001
         YHt = (Ht1 - Pt1) / 2.0
-        CW = Ch_Wid * .1
+        CW = Ch_Wid * .1                # Convert to mm
         Y2 = Ht1 - CW
         Y5 = Pit1 + CW
         Rd1 = R_Min1 - 0.001
@@ -237,31 +236,40 @@ def ChamferNut(Pit, Ht, Ch_Wid, iTY_Char):
         P13 = adsk.core.Point3D.create(X1, -Y1, 0)
         P14 = adsk.core.Point3D.create(X0, -Ht1, 0)
         P15 = adsk.core.Point3D.create(0, -Ht1, 0)
+
         sketches = subComp1.sketches
         sketch_Chamfer = sketches.add(subComp1.xZConstructionPlane)
         sketch_Chamfer.name = "Chamfer_Thread"
         sketch_Rev = sketch_Chamfer.sketchCurves.sketchLines
-    # Draw a line to use as the axis of revolution.
+# Draw a line to use as the axis of revolution.
         axisLine = sketch_Rev.addByTwoPoints(P11,P15)
         sketch_Rev.addByTwoPoints(P11,P12)
-        sketch_Rev.addByTwoPoints(P12,P13)
-        sketch_Rev.addByTwoPoints(P13,P14)
-        sketch_Rev.addByTwoPoints(P14,P15)
-    # Get the profile defined by the Chamfer.
+# We crossed the centerline with chamfer profile, so adjust to have only 1 profile
+        if X1 < 0:
+            P16 = adsk.core.Point3D.create(.01, -Pt1, 0)        # Bottom Vertical Intersection Line
+            P17 = adsk.core.Point3D.create(.01, -Ht1, 0)        # Top Vertical Intersection Line
+
+            P50 = findIntersection(P16, P17, P12, P13)          # Intersection of bottom 45 degree line
+            P51 = findIntersection(P16, P17, P13, P14)          # Intersection of top 45 degreee line
+            sketch_Rev.addByTwoPoints(P12,P50)
+            sketch_Rev.addByTwoPoints(P50,P51)
+            sketch_Rev.addByTwoPoints(P51,P14)
+            sketch_Rev.addByTwoPoints(P14,P15)
+        else:
+            sketch_Rev.addByTwoPoints(P12,P13)
+            sketch_Rev.addByTwoPoints(P13,P14)
+            sketch_Rev.addByTwoPoints(P14,P15)
+# Get the profile defined by the Chamfer.
         prof = sketch_Chamfer.profiles.item(0)
         profiles = adsk.core.ObjectCollection.create()
         profiles.add(prof)
-    # There will be 3 profiles if X1 is on the other side axisLine
-        if X1 < 0:
-            #profiles.add(sketch_Chamfer.profiles.item(1))
-            profiles.add(sketch_Chamfer.profiles.item(2))
-    # Create an revolution input to be able to define the input needed for a revolution
+# Create an revolution input to be able to define the input needed for a revolution
         revolves = subComp1.features.revolveFeatures
         revInput = revolves.createInput(profiles, axisLine, adsk.fusion.FeatureOperations.CutFeatureOperation)
-    # Define that the extent is an angle of pi to get half of a torus.
+# Define that the extent is an angle of pi to get half of a torus.
         angle = adsk.core.ValueInput.createByReal(math.pi * 2.0)
         revInput.setAngleExtent(False, angle)
-    # Create the extrusion.
+# Create the extrusion.
         ext = revolves.add(revInput)
 ##########################################################################
 def count_sketch_profiles(sketch):
@@ -286,10 +294,18 @@ def DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char):
     profCir1 = sketch_Cyl.profiles.item(0)
     Ht2 = adsk.core.ValueInput.createByReal(Ht1)
     extrudes = subComp1.features.extrudeFeatures
-    ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+    try:
+        ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+    except:
+        ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.CutFeatureOperation)           # sometimes Joining does not work, so if it fails try cutting 1st
+        ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)          # Then join it & that worked for the problem I had with it
 # Cut the threads that are below origin
     Ht3 = adsk.core.ValueInput.createByReal(-((YB_B * 2) + (PitHlx * 2 * .1)))
-    ext1 = extrudes.addSimple(profCir1, Ht3, adsk.fusion.FeatureOperations.CutFeatureOperation)
+    try:
+        ext1 = extrudes.addSimple(profCir1, Ht3, adsk.fusion.FeatureOperations.CutFeatureOperation)
+    except:
+        msg = 'Last Cut Feature below origin in DrawCylinder failed for some reason, but might not be a problem'
+        ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
 # Get the XY construction plane.
     xy_plane = create_offset_plane_from_xy
 # Create the offset plane.
@@ -300,10 +316,15 @@ def DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char):
 # Create sketch on the offset plane and draw a circle.
     sketchTop = create_circle_sketch_on_plane(offset_plane, Rad1+.01)
     profCir2 = sketchTop.profiles.item(0)
-    ext_Last = extrudes.addSimple(profCir2, Ht5, adsk.fusion.FeatureOperations.CutFeatureOperation)
+    try:
+        ext_Last = extrudes.addSimple(profCir2, Ht5, adsk.fusion.FeatureOperations.CutFeatureOperation)
+    except:
+        msg = 'Last Cut Feature of DrawCylinder failed for some reason, but might not be a problem'
+        ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
 # For some reaason this sketch stays turned on when drawing the cylinder for the Nut threads
     if sketch_Cyl.isVisible:
         sketch_Cyl.isVisible = False
+##########################################################################
 def Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag):
     global body1
     global Rad1
@@ -356,7 +377,7 @@ def Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag):
 def DrawHelix(Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, prof, iflag):
     global sketchSplines
     global Vert_Line
-    P10 = adsk.core.Point3D.create(0,0,Ht1 + .1)
+    P10 = adsk.core.Point3D.create(0,0,Ht1)
     rev = int(Ht / Pitch) + 1               # Number of revolutions, add one to it so we don't do a partial revolution
     Pitch1 = Pitch * 0.1
 # Create an object collection for the points.
@@ -514,8 +535,6 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
         global sketch_Profile
         i_Error = 0
         if RL_Check == 'Y' and iflag == 1:
-            #msg = f'Before Call -- P1.x = {P1.x}   P1.y = {P1.y}<br>P2.x = {P2.x}   P2.y = {P2.y}<br>P3.x = {P3.x}   P3.y = {P3.y}<br>P4.x = {P4.x}   P4.y = {P4.y}<br>P5.x = {P5.x}   P5.y = {P5.y}'
-            #ui.messageBox(msg)
             P100 = adsk.core.Point3D.create(P1.x, P1.y + 1.0, 0)
             P101 = P1
             P102 = P2
@@ -528,6 +547,8 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
             P2 = Vertex_Pts[1]
             P3 = Vertex_Pts[2]
             P4 = Vertex_Pts[3]
+            P22_y = -(PitHlx1 - P2.y)       # fusion 360 is backwards on negative/positive numbers here, so we need a negative number here
+                                            # This took me a while to debug because of this
             X0 = P1.x - 0.01
             R_Min1 = X0
             R_Min = R_Min1 + .01
@@ -536,12 +557,21 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
             P5 = adsk.core.Point3D.create(P4.x, P1.y - PitHlx1, 0)
             P4_y = abs(P4.y)            # Make positive to be less confusing in If Statement
             P5_y = abs(P5.y)
+            #msg = f'After Call -- P1.x = {P1.x}   P1.y = {P1.y}<br>P2.x = {P2.x}   P2.y = {P2.y}<br>P3.x = {P3.x}   P3.y = {P3.y}<br>P4.x = {P4.x}   P4.y = {P4.y}<br>P5.x = {P5.x}   P5.y = {P5.y}<br>P22_y = {P22_y}'
+            #ui.messageBox(msg)
+# We need to readjust P4 to the intersection point between line P4 to P5 & P5 to P2 extended by the Helix Pitch distance
             if P5_y < P4_y:
-                i_Error = 1
-                Err_Dist = (P4_y - P5_y) * 10.0
-                S_Dist = "{:.4f}".format(Err_Dist)
-                msg = f'Female Profiles will overlap with using Real Offsets<br>Try increasing Helix Pitch, decreasing M/F Thread Gap<br>or UNCHECK Use Real Offset of Threads<br><br>Overlap Distance = {S_Dist}mm'
-                ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
+                if G_Rail != 'L' and G_Rail != 'P':
+                    P22 = adsk.core.Point3D.create(P2.x, P22_y, 0)
+                #msg = f'findIntersection Call -- P22.x = {P22.x}   P22.y = {P22.y}'
+                #ui.messageBox(msg)
+# Calculate direction vectors
+                    P45 = findIntersection(P3, P4, P5, P22)
+                    i_Error = 1
+                    Err_Dist = (P4_y - P5_y) * 10.0
+                    S_Dist = "{:.4f}".format(Err_Dist)
+                    msg = f'Female Profiles will overlap with using Real Offsets<br>Try increasing Helix Pitch, decreasing M/F Thread Gap<br>or UNCHECK Use Real Offset of Threads<br><br>Overlap Distance = {S_Dist}mm<br>P45.x = {P45.x}    P45.y = {P45.y}'
+                    ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
 # Create a new 3D sketch.
         sketches = subComp1.sketches
         xyPlane = subComp1.xYConstructionPlane
@@ -551,23 +581,35 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
         sketch_Profile = sketches.add(subComp1.xZConstructionPlane)
         sketch_Profile.name = "Thread_Profile"
         sketchLines = sketch_Profile.sketchCurves.sketchLines
-        if G_Rail== 'L':
+        rev = int(Ht / PitHlx) + 1                   # How many revolutions of helix
+        if G_Rail== 'L' or G_Rail == 'P':
             points = [P00, P1, P2, P3, P4]              # Create a list of points for single thread profile
             draw_lines_between_points(sketch_Profile, points, iflag)
         else:
-            points = [P00, P1, P2, P3, P4, P5]           # Create a list of points to start multiple thread profiles
-            rev = int(Ht / PitHlx) + 1                   # How many revolutions of helix
-            draw_lines_between_points(sketch_Profile, points, iflag)   # Draw 1st thread profile before loop
-            points = [P1, P2, P3, P4, P5]
+            if i_Error == 1:
+                points = [P00, P1, P2, P3, P45]                             # Next profile overlaps, so use intersection P45 instead of P4, P5
+                draw_lines_between_points(sketch_Profile, points, iflag)    # Draw 1st thread profile before loop
+                P1 = adsk.core.Point3D.create(P45.x, P45.y + PitHlx1, 0)     # Change P1 to vertically below P45 intersection Point
+                msg = f'After draw_lines_between_points -- P1.x = {P1.x}   P1.y = {P1.y}<br>P45.x = {P45.x}   P1.y = {P45.y}<br>PitHlx = {PitHlx}   PitHlx1 = {PitHlx1}'
+                ui.messageBox(msg)
+                points = [P1, P2, P3, P45]
+            else:
+                points = [P00, P1, P2, P3, P4, P5]                          # Create a list of points to start multiple thread profiles
+                draw_lines_between_points(sketch_Profile, points, iflag)    # Draw 1st thread profile before loop
+                points = [P1, P2, P3, P4, P5]
 # Loop to change the Y coordinate of points
             for i in range(rev):
 # on last iteration, we do not want to draw between point P4 & P5
                 if i == rev-1:
                     points = [P1, P2, P3, P4]
-                move_points_by_y(points, PitHlx * .1)                       # Move all 4 points up in Y direction Pitch amount
+                for point in points:
+                    point.y -= PitHlx1
                 draw_lines_between_points(sketch_Profile, points, iflag)    # Draw the next thread
-        Y4 = P4.y
-        P6 = adsk.core.Point3D.create(X0, Y4, 0)                            # P6 is vertical to P00
+                if i_Error == 1:
+                    P4.y -= PitHlx1
+        if i_Error == 1:
+            P4.y += PitHlx1             # simplest way to fix off by one, since we add 1 too many in the loop
+        P6 = adsk.core.Point3D.create(X0, P4.y, 0)                            # P6 is vertical to P00
         sketch_Profile.sketchCurves.sketchLines.addByTwoPoints(P4, P6)      # Draw short horizontal line to be perpendicular to P00
         sketch_Profile.sketchCurves.sketchLines.addByTwoPoints(P6, P00)     # close profile
         largest_profile = sketch_Profile.profiles.item(0)
@@ -588,11 +630,83 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
                     largest_area = area
                     largest_profile = prof
         DrawHelix(Rad, PitHlx, Ht, Ht1, sPts, G_Rail, RL_thread, largest_profile, iflag)
-        DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char)
+# Now for the possible Single Rectangular pattern to create threads
+        if G_Rail == 'P':
+            DrawPatternThreads(PitHlx, rev)
+        DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char) # Only extrude the length of 1 helix revolution
         if iST_Char > 1:
             CopRot_Threads(iST_Char)
     except Exception as e:
         ui.messageBox("Error: {}".format(traceback.format_exc()))
+# Originally did the pattern this way until realizing  the pattern along path would be simpler
+def Old_DrawPatternThreads(PitHlx, rev):
+    bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
+    numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used
+    targetBody = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawn
+# Create input entities for rectangular pattern
+    inputEntites = adsk.core.ObjectCollection.create()
+    inputEntites.add(targetBody)
+# Get x and y axes for rectangular pattern
+    xAxis = subComp1.xConstructionAxis
+    zAxis = subComp1.zConstructionAxis
+# Quantity and distance
+    quantityOne = adsk.core.ValueInput.createByString('1')      # quantity along X-Axis Not really used
+    distanceOne = adsk.core.ValueInput.createByString('1 cm')   # distance along X-Axis not really used
+    quantityTwo = adsk.core.ValueInput.createByString(str(rev))
+    distanceTwo = adsk.core.ValueInput.createByString(str (PitHlx))
+# Create the input for rectangular pattern
+    rectangularPatterns = subComp1.features.rectangularPatternFeatures
+    rectangularPatternInput = rectangularPatterns.createInput(inputEntites, xAxis, quantityOne, distanceOne, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
+# Set the data for second direction
+    rectangularPatternInput.setDirectionTwo(zAxis, quantityTwo, distanceTwo)
+# Create the rectangular pattern
+    rectangularFeature = rectangularPatterns.add(rectangularPatternInput)
+###################################################################################################
+def DrawPatternThreads(PitHlx, rev):
+    bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
+    numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used
+    targetBody = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawnf
+# Create input entities for rectangular pattern
+    inputEntites = adsk.core.ObjectCollection.create()
+    inputEntites.add(targetBody)
+    path = subComp1.features.createPath(Vert_Line)
+    patternQuantity = adsk.core.ValueInput.createByReal(rev)
+    patternDistance = adsk.core.ValueInput.createByReal(PitHlx * .1)
+    pathPatterns = subComp1.features.pathPatternFeatures
+    pathPatternInput = pathPatterns.createInput(inputEntites, path, patternQuantity, patternDistance, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
+# Create the path pattern
+    pathFeature = pathPatterns.add(pathPatternInput)
+###################################################################################################
+# find intersection point of Line P01, P02 and P03, P04
+def findIntersection(P01, P02, P03, P04):
+    x1 = P01.x
+    y1 = P01.y
+    x2 = P02.x
+    y2 = P02.y
+    x3 = P03.x
+    y3 = P03.y
+    x4 = P04.x
+    y4 = P04.y
+    px= ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) ) 
+    py= ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) )
+    return(adsk.core.Point3D.create(px, py, 0))
+    #return [px, py]
+def calculate_intersection(P3, P4, P5, P22):
+    # Calculate the coefficients for the lines
+    A1 = abs(P4.y) - abs(P3.y)
+    B1 = P3.x - P4.x
+    C1 = (A1 * P3.x) + (B1 * abs(P3.y))
+    A2 = abs(P22.y) - abs(P5.y)
+    B2 = P5.x - P22.x
+    C2 = (A2 * P5.x) + (B2 * abs(P5.y))  
+# Calculate the determinant
+    det = A1 * B2 - A2 * B1
+    if det == 0:
+        return None  # Lines are parallel and do not intersect
+# Calculate the intersection point
+    x = (B2 * C1 - B1 * C2) / det
+    y = (A1 * C2 - A2 * C1) / det
+    return(adsk.core.Point3D.create(x, y, 0))
 def CopRot_Threads(iST_Char):
     rot_Array = [180, 90]
     icount = 1                  # one time thru loop if iST_Char = 2
@@ -646,9 +760,6 @@ def subtract_bodies():
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
 ##########################################################################
-def move_points_by_y(points, offset):
-    for point in points:
-        point.y -= offset
 def draw_lines_between_points(sketch, points, iflag):
     for i in range(len(points)-1):
         sketch.sketchCurves.sketchLines.addByTwoPoints(points[i], points[i+1])
@@ -699,9 +810,10 @@ def stop():
 # Delete the command definition
     if command_definition:
         command_definition.deleteMe()
-
+### $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ ###
 # Function that is called when a user clicks the corresponding button in the UI.
 # This defines the contents of the command dialog and connects to the command related events.
+### $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ ###
 def command_created(args: adsk.core.CommandCreatedEventArgs):
     # General logging for debug.
     futil.log(f'{CMD_NAME} Command Created Event')
@@ -764,9 +876,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # Read variables from the text file if it exists
         with DialogName as f:
             reader = list(csv.reader(f))
-
         DialogName.close
-    
         for csvData in reader:
             diameter = csvData[0]
             pitch = csvData[1]
@@ -883,17 +993,29 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     dropdownInput1 = tab1ChildInputs.addDropDownCommandInput('GuideRail', 'Helix, Centerline or Long Helix Guide:', adsk.core.DropDownStyles.TextListDropDownStyle);
     dropdown1Items = dropdownInput1.listItems
 # Test what was used for the guideline on previous run
-    if GR_Char == 'H':
+# H = Single Helix & Threads complete length
+# C = Center line Guide Rail                                We are disabling this for now, since it does not work well
+# L = Long Helix complete length & Single thread profile
+# P = Pattern of Single Helix & Single Thread copied for longer threads
+    if GR_Char == 'H' or GR_Char == 'C':
         dropdown1Items.add('Helix', True, '')
-        dropdown1Items.add('CenterLine', False, '')
+        dropdown1Items.add('Pattern', False, '')
+        #dropdown1Items.add('CenterLine', False, '')
         dropdown1Items.add('LongHelix', False, '')
-    elif GR_Char == 'C':
+    elif GR_Char == 'P':
         dropdown1Items.add('Helix', False, '')
-        dropdown1Items.add('CenterLine', True, '')
+        dropdown1Items.add('Pattern', True, '')
+        #dropdown1Items.add('CenterLine', False, '')
         dropdown1Items.add('LongHelix', False, '')
+    #elif GR_Char == 'C':
+    #    dropdown1Items.add('Helix', False, '')
+    #    dropdown1Items.add('Pattern', False, '')
+    #    dropdown1Items.add('CenterLine', True, '')
+    #    dropdown1Items.add('LongHelix', False, '')
     else:
         dropdown1Items.add('Helix', False, '')
-        dropdown1Items.add('CenterLine', False, '')
+        dropdown1Items.add('Pattern', False, '')
+        #dropdown1Items.add('CenterLine', False, '')
         dropdown1Items.add('LongHelix', True, '')
     dropdownInput2 = tab1ChildInputs.addDropDownCommandInput('RightLeft', 'Right or Left Threads', adsk.core.DropDownStyles.TextListDropDownStyle);
     dropdown2Items = dropdownInput2.listItems
@@ -1010,6 +1132,8 @@ def command_execute(args: adsk.core.CommandEventArgs):
     iST_Char = 1
     if GuideRail == 'Helix':
         GR_Char = 'H'
+    elif GuideRail == 'Pattern':
+        GR_Char = 'P'
     elif GuideRail =='LongHelix':
         GR_Char = 'L'               # This option can really bog down fusion if there are a lot of threads
     if RtLt == 'Left':
@@ -1082,7 +1206,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
             unhide_body(body1)              # Unhide the Bolt Threads
         bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
         numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
-        NutThreads = bsubComp1_bodies.item(numBodies-1)     # This shoulde be the Nut just drawn
+        NutThreads = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawn
         NutThreads.name = BodyNut_Name                      # Rename the Nut or Nut Threads
 # Group everything used to create the gear in the timeline.
     timelineGroups = design.timeline.timelineGroups

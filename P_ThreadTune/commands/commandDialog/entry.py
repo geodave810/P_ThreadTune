@@ -1078,7 +1078,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     _NutFlat_Dia = tab2ChildInputs.addTextBoxCommandInput('NutFlat_Dia', 'Nut Flat Dia: ', NutFlat_Dia, 1, False)
     _NutHd_Ht = tab2ChildInputs.addTextBoxCommandInput('NutHd_Ht', 'Nut Height: ', NutHd_Ht, 1, False)
 # Create dropdown input with test list style.
-    dropdownInput1 = tab1ChildInputs.addDropDownCommandInput('GuideRail', 'Helix, Centerline or Long Helix Guide:', adsk.core.DropDownStyles.TextListDropDownStyle);
+    dropdownInput1 = tab1ChildInputs.addDropDownCommandInput('GuideRail', 'Helix, Pattern or Long Helix Guide:', adsk.core.DropDownStyles.TextListDropDownStyle);
     dropdown1Items = dropdownInput1.listItems
 # Test what was used for the guideline on previous run
 # H = Single Helix & Threads complete length

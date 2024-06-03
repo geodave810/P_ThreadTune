@@ -42,7 +42,6 @@ def CreateNewComponent():
 #############  Following routines below were generated from ChatGPT on 5/13/2024  #############
 ###############################################################################################
 # The generated code had to be adjusted some to work within the framework of my program
-#
 def offset_point(px, py, ox, oy, distance):
 #Offset a point (px, py) in the direction (ox, oy) by a specified distance.
     norm = math.sqrt(ox**2 + oy**2)
@@ -476,8 +475,6 @@ def calcPts(OD, Pitch, PitHlx1, iflag):
     X2 = Rad * 0.1
     X3 = X2
     X4 = X1
-    #msg = f'YB_B = {YB_B}<br>YS_B = {YS_B}<br>YB_T = {YB_T}<br>YS_T = {YS_T}'
-    #ui.messageBox(msg)
 # For some reason Negative numbers are above X-axis & Positive numbers are below X-axis
     if AngB > 0:
         P1 = adsk.core.Point3D.create(X1, YB_B, 0)
@@ -557,14 +554,10 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
             P5 = adsk.core.Point3D.create(P4.x, P1.y - PitHlx1, 0)
             P4_y = abs(P4.y)            # Make positive to be less confusing in If Statement
             P5_y = abs(P5.y)
-            #msg = f'After Call -- P1.x = {P1.x}   P1.y = {P1.y}<br>P2.x = {P2.x}   P2.y = {P2.y}<br>P3.x = {P3.x}   P3.y = {P3.y}<br>P4.x = {P4.x}   P4.y = {P4.y}<br>P5.x = {P5.x}   P5.y = {P5.y}<br>P22_y = {P22_y}'
-            #ui.messageBox(msg)
 # We need to readjust P4 to the intersection point between line P4 to P5 & P5 to P2 extended by the Helix Pitch distance
             if P5_y < P4_y:
                 if G_Rail != 'L' and G_Rail != 'P':
                     P22 = adsk.core.Point3D.create(P2.x, P22_y, 0)
-                #msg = f'findIntersection Call -- P22.x = {P22.x}   P22.y = {P22.y}'
-                #ui.messageBox(msg)
 # Calculate direction vectors
                     P45 = findIntersection(P3, P4, P5, P22)
                     i_Error = 1
@@ -806,10 +799,21 @@ def stop():
 # Delete the button command control
     if command_control:
         command_control.deleteMe()
-
 # Delete the command definition
     if command_definition:
         command_definition.deleteMe()
+def is_valid_float(s):
+    try:
+        float(s)
+        return True
+    except ValueError:
+        return False
+def is_valid_int(s):
+    try:
+        int(s)
+        return True
+    except ValueError:
+        return False       
 ### $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ ###
 # Function that is called when a user clicks the corresponding button in the UI.
 # This defines the contents of the command dialog and connects to the command related events.
@@ -912,7 +916,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         angleTop = '30'
         angleBot = '30'
         splinePts = '18'
-        GR_Char = 'H'
+        GR_Char = 'P'
         RL_Char = 'R'
         ST_Char = '1'
         TY_Char = '5'
@@ -930,6 +934,90 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         Cham_Wid = '1.015'
         Thread_Wid = '0.6766'
         Thread_Ht = '0.9375'
+    in_err = 0
+    if is_valid_float(diameter) == False:
+        diameter = '6'
+        in_err = 100
+    if is_valid_float(pitch) == False:
+        pitch = '1'
+        in_err = 101
+    if is_valid_float(pitHelix) == False:
+        pitHelix = '1'
+        in_err = 102
+    if is_valid_float(height) == False:
+        height = '5'
+        in_err = 103
+    if is_valid_float(angleTop) == False:
+        angleTop = '30'
+        in_err = 104
+    if is_valid_float(angleBot) == False:
+        angleBot = '30'
+        in_err = 105
+    if is_valid_int(splinePts) == False:
+        splinePts = '18'
+        in_err = 106
+    if GR_Char != 'H' and GR_Char != 'P' and GR_Char != 'L':
+        GR_Char = 'P'
+        in_err = 107
+    if RL_Char != 'R' and RL_Char != 'L':
+        RL_Char = 'R'
+        in_err = 108
+    if ST_Char != '1' and ST_Char != '2' and ST_Char != '4':
+        ST_Char = '1'
+        in_err = 109
+    if CT_Check != 'Y' and CT_Check != 'N':
+        CT_Check = 'Y'
+        in_err = 110
+    if CN_Check != 'Y' and CN_Check != 'N':
+        CN_Check = 'Y'
+        in_err = 111
+    if RL_Check != 'Y' and RL_Check != 'N':
+        RL_Check = 'Y'
+        in_err = 112
+    if is_valid_int(TY_Char) == False:
+        TY_Char = '5'
+        in_err = 113
+    else:
+        if int(TY_Char) > 5 or int(TY_Char) < 1:
+            TY_Char = '5'
+            in_err = 114
+    if is_valid_int(Bolt_Sides) == False:
+        Bolt_Sides = '6'
+        in_err = 115
+    if is_valid_float(BoltFlat_Dia) == False:
+        BoltFlat_Dia = '10'
+        in_err = 116
+    if is_valid_float(BoltHd_Ht) == False:
+        BoltHd_Ht = '4'
+        in_err = 117
+    if is_valid_int(Nut_Sides) == False:
+        Nut_Sides = '6'
+        in_err = 118
+    if is_valid_float(NutFlat_Dia) == False:
+        NutFlat_Dia = '10'
+        in_err = 119
+    if is_valid_float(NutHd_Ht) == False:
+        NutHd_Ht = '5'
+        in_err = 120
+    if is_valid_float(MF_Gap) == False:
+        MF_Gap = '.3'
+        in_err = 121
+    if is_valid_float(Cham_Wid) == False:
+        Cham_Wid = '1.015'
+        in_err = 122
+    if is_valid_float(Thread_Wid) == False:
+        Thread_Wid = '0.6766'
+        in_err = 123
+    if is_valid_float(Thread_Ht) == False:
+        Thread_Ht = '0.9375'
+        in_err = 124
+# If there was an error in the input data, write out the default values for that data
+    if in_err > 0:                   
+        BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
+        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
+        with open(Fname, 'w') as csvfile:
+            csvfile.write(OutString)
+        csvfile.close  
 # Create a dropdown command input
     dropDown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle);
     dropdown0Items = dropDown0CommandInput.listItems
@@ -1062,10 +1150,11 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     futil.add_handler(args.command.inputChanged, command_input_changed, local_handlers=local_handlers)
     futil.add_handler(args.command.executePreview, command_preview, local_handlers=local_handlers)
     futil.add_handler(args.command.validateInputs, command_validate_input, local_handlers=local_handlers)
-    futil.add_handler(args.command.destroy, command_destroy, local_handlers=local_handlers)
-
+    futil.add_handler(args.command.destroy, command_destroy, local_handlers=local_handlers)                                                                                                 
+### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###
 # This event handler is called when the user clicks the OK button in the command dialog or 
 # is immediately called after the created event not command inputs were created for the dialog.
+### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###                                                                                                      
 def command_execute(args: adsk.core.CommandEventArgs):
     # General logging for debug.
     futil.log(f'{CMD_NAME} Command Execute Event')
@@ -1144,14 +1233,16 @@ def command_execute(args: adsk.core.CommandEventArgs):
         iST_Char = 4      
     ST_Char = str (iST_Char)
 # Write back user inputs as defaults for next time
+# Putting the code below in a subroutine does not use the global variables for some reason & it does not make any sense to me.
+# If I print pitHelix and MF_Gap before this & put the following 6 lines in a subroutine, the subroutine will use the values from when it 1st read the DialogInput_V9.txt file & not current values
+# so I have to duplicate the code to get it to work correctly.
     BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
     OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
     with open(Fname, 'w') as csvfile:
         csvfile.write(OutString)
-    csvfile.close
+    csvfile.close  
     Body_Name = "M" + diameter + "_" + pitch + "TPx" + pitHelix + "HPx" + height + "mm" + "_" + RL_Char + "_" + angleTop + "D_" + angleBot + "D_" + splinePts + "spts_" + GR_Char + "_Guide"
-    #msg = f'diameter: {diameter}<br>pitch: {pitch}<br>height: {height}<br>angleTop: {angleTop}<br>angleBot: {angleBot}<br>splinePts: {splinePts}GR_Char: {GR_Char}<br>RL_Char: {RL_Char}<br>Cham_Wid = {Cham_Wid}'
-    #ui.messageBox(msg)
+
     sPts = int(splinePts)
     start = time.time()
     OD = float(diameter)
@@ -1183,7 +1274,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
         if iBodies > 0:
             hide_body(body1)                        # Hide the Bolt Threads
         OD1 = (float(MF_Gap) * 2.0)  + OD       # Used if not doing real offsets of threads
-        BodyNut_Name = "M" + diameter + "_Nut"
+        BodyNut_Name = "M" + diameter + "_" + MF_Gap + "_MF_Gap_Nut"
         if RL_Check == 'Y':
             if iTY_Char == 3:
                 DrawThreads(OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)

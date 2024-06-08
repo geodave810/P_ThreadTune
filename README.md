@@ -36,18 +36,34 @@ This program draws the thread at 0,0,0 and only draws the threads.  A cylinder i
 
 I will add the little caveats of this program as I come across them.
 
-1. This currently only works with mm units.  This will probably be fixed later, but I want to work out some of the other features & problems first.
-   
-2. When creating the thread bodies, I do a join of the sweep of the thread profile & the inner cylinder.  If you have another body located where it joins it will join that one also.  I have not gone to the trouble of hiding everything 
+1. This currently only works with mm units.  I have this about worked out with English & just need to do some more testing on it.  One problem I did run into with English units is you need to set in your Preferences Unit and Value Display General Precision to 9 decimal places.  This is because English threads are measured with Threads per Inch (TPI).  For instance 24 TPI would be a decimal equalivalent of 0.041666667".
+2. Here are the decimal equivalents of the English standard TPI values I have come across.
+TPI
+32	   0.031250000
+24	   0.041666667
+20	   0.050000000
+18	   0.055555556
+16	   0.062500000
+14	   0.071428571
+12	   0.083333333
+11	   0.090909091
+10	   0.100000000
+9	   0.111111111
+8	   0.125000000
+7	   0.142857143
+6	   0.166666667
+4.5	0.222222222
 
-4. You can bog the program down if your spline helix has a lot of points for the sweep of the threads.  18 spline points should be sufficient.  If you have too many points, you might get an error dialog.  Use Pattern option for best results
+4. When creating the thread bodies, I do a join of the sweep of the thread profile & the inner cylinder.  If you have another body located where it will join that one also.  I have not gone to the trouble of hiding everything 
 
-5. This will probably work better in a new design.  If you don't, just be sure to hide any objects near origin before running.
+5. You can bog the program down if your spline helix has a lot of points for the sweep of the threads.  18 spline points should be sufficient.  If you have too many points, you might get an error dialog.  Use Pattern option for best results
 
-6. For long threads, it will occasionally not create the inner cylinder to connect the threads.  You should only have problems with long threads using the Helix or Long Helix option.  I have done a M8x500mm with 1.25mm pitch.  I have occasionally had to restart fusion when something did not work right & after restarting it did.
+6. This will probably work better in a new design.  If you don't, just be sure to hide any objects near origin before running.
 
-7. I have locked up fusion & had to kill the process 2 or 3 times, but not since I rewrote the helix drawing method to draw just one revolution of the helix.  I left the long helix method in there, but would not recommend it.  Again, stick with the Pattern option
+7. For long threads, it will occasionally not create the inner cylinder to connect the threads.  You should only have problems with long threads using the Helix or Long Helix option.  I have done a M8x500mm with 1.25mm pitch.  I have occasionally had to restart fusion when something did not work right & after restarting it did.
 
-8. There is an option for Real offsets which means the offset will be the same gap all the way around.  ChatGPT helped with the code for this & I commented the code where that was added.
+8. I have locked up fusion & had to kill the process 2 or 3 times, but not since I rewrote the helix drawing method to draw just one revolution of the helix.  I left the long helix method in there, but would not recommend it.  Again, stick with the Pattern option
+
+9. There is an option for Real offsets which means the offset will be the same gap all the way around.  ChatGPT helped with the code for this & I commented the code where that was added.
 
 If you find this program useful to you, consider making a donation from the link on the right or purchasing one of my audio recordings of Mountain streams from Amazon in the 2nd link on the right.

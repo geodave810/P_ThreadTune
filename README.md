@@ -39,20 +39,20 @@ I will add the little caveats of this program as I come across them.
 1. This currently only works with mm units.  I have this about worked out with English & just need to do some more testing on it.  One problem I did run into with English units is you need to set in your Preferences Unit and Value Display General Precision to 9 decimal places.  This is because English threads are measured with Threads per Inch (TPI).  For instance 24 TPI would be a decimal equalivalent of 0.041666667".
 2. Here are the decimal equivalents of the English standard TPI values I have come across.
 TPI
-32	   0.031250000
-24	   0.041666667
-20	   0.050000000
-18	   0.055555556
-16	   0.062500000
-14	   0.071428571
-12	   0.083333333
-11	   0.090909091
-10	   0.100000000
-9	   0.111111111
-8	   0.125000000
-7	   0.142857143
-6	   0.166666667
-4.5	0.222222222
+32	   0.031250000<br>
+24	   0.041666667<br>
+20	   0.050000000<br>
+18	   0.055555556<br>
+16	   0.062500000<br>
+14	   0.071428571<br>
+12	   0.083333333<br>
+11	   0.090909091<br>
+10	   0.100000000<br>
+9	     0.111111111<br>
+8	     0.125000000<br>
+7	     0.142857143<br>
+6	     0.166666667<br>
+4.5    0.222222222<br>
 
 4. When creating the thread bodies, I do a join of the sweep of the thread profile & the inner cylinder.  If you have another body located where it will join that one also.  I have not gone to the trouble of hiding everything 
 

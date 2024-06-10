@@ -27,9 +27,8 @@ Click on the program & you should see a thread icon in the ADD-INS panel.  To ru
 The most common use of this program for me anyway is to have a different diameter for the Male threads & the Female threads in order to get a good tolerance in 3D prints.  For example, using 6mm diameter threads with a pitch of 1 & angle of 30, then a 5.5mm diameter threads with same parameters you will get a tolerance of 0.25mm all the way around the vertical part of the threads, but a little less around the angled part of the threads.<br>
 ![ThreadTune_v1_5_Tab1M](https://github.com/geodave810/P_ThreadTune/assets/13069472/d6cc5184-a5ed-4ee1-89dc-6520145227ff)
 ![ThreadTune_v1_5_Tab1E](https://github.com/geodave810/P_ThreadTune/assets/13069472/583bcf6e-67ff-4c92-88e1-0cfb876c6b42)
-![ThreadTune_v1_5_Tab2E](https://github.com/geodave810/P_ThreadTune/assets/13069472/493f04a5-2827-4dbf-96a9-be419e3a3d40)
 ![ThreadTune_v1_5_Tab2M](https://github.com/geodave810/P_ThreadTune/assets/13069472/687ed454-d04f-427d-aa9c-c8b320676700)
-
+![ThreadTune_v1_5_Tab2E](https://github.com/geodave810/P_ThreadTune/assets/13069472/493f04a5-2827-4dbf-96a9-be419e3a3d40)
 <br>
 ![ThreadTune_TestRun](https://github.com/geodave810/P_ThreadTune/assets/13069472/65711d0e-00a0-4018-bdee-cf31613d7b88)
 

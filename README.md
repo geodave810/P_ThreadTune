@@ -42,7 +42,7 @@ I will add the little caveats of this program as I come across them.
 
 1. Since English threads generally require more precision because the way the threads are defined, I ran into a problem if your Preferences Unit and Value Display General Precision is set to a low number like 3. This is because English threads are measured with Threads per Inch (TPI). For instance 24 TPI would be a decimal equivalent of 0.041666667". You might want to consider changing this to 9 places in your preferences. Probably will not cause you a problem either way as I save the current preference value, set it to 9, then change it back to what you set it to after that portion of the code is run.
 2. Here are the decimal equivalents of the English standard TPI values I have come across.
-TPI
+TPI<br>
 32	   0.031250000<br>
 24	   0.041666667<br>
 20	   0.050000000<br>

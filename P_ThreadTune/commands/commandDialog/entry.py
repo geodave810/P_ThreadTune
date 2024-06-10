@@ -13,6 +13,7 @@ app = adsk.core.Application.get()
 design = app.activeProduct
 rootComp = design.rootComponent
 ui = app.userInterface
+preferences = app.preferences
 
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
 CMD_NAME = 'P_ThreadTune'
@@ -159,7 +160,6 @@ def DrawBoltHead(BoltFlat_Dia, num_sides, BoltHd_Ht):
     ext = extrudes.addSimple(profPoly, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
 ##########################################################################
 def DrawNut(NutFlat_Dia, num_sides, NutHd_Ht, Pitch):
-    global body2
 # Define the number of sides and side length of the polygon
     Flat_OD = NutFlat_Dia * .1         # Diameter between Flats
     Flat_Rad = Flat_OD / 2              # Rad of Flat Diamter
@@ -378,14 +378,14 @@ def DrawHelix(Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, prof, iflag):
     global Vert_Line
     P10 = adsk.core.Point3D.create(0,0,Ht1)
     rev = int(Ht / Pitch) + 1               # Number of revolutions, add one to it so we don't do a partial revolution
-    Pitch1 = Pitch * 0.1
+    Pitch2 = Pitch * 0.1
+    Pitch1 = round(Pitch2, 6)
 # Create an object collection for the points.
     sketchSplines = sketch_Helix.sketchCurves.sketchFittedSplines
     sketchCenter = sketch_Helix.sketchCurves.sketchLines    # used for Centerline Guide Rail, does not work as well as Helix
     P0 = adsk.core.Point3D.create(0,0,0)
     Vert_Line = sketchCenter.addByTwoPoints(P0,P10)         # Draw Center Vertical for Guide Rail with Sweeep
     Z0 = 0.0
-    #prof = sketch_Profile.profiles.item(0)
     Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag)    # Now draw the Helix
     if iflag == 0:
         body1.name = Body_Name                      # rename body to most of input parameters from main routine
@@ -394,12 +394,18 @@ def ReCalcHelixPitch(idx):
     idx_array = [1, 2, 4]                           # 1 start, 2 start, 4 start
     x = idx_array[idx]
     pit = _pitch.text         # ReCalcHelix does not access global variable pitch for some reason, so get it from dialog box
-    _pitHelix.text = str(float(pit) * x)    # Set the pitch of the helix
+    _pitHelix.text = repr(float(pit) * x)    # Set the pitch of the helix
 def CalcThread(iTest):
-    diameter = _diameter.text
-    pitch = _pitch.text
+    Eng_ID = dropdownInputEM.selectedItem.index         # 0 = English, 1 = Metric
+    if Eng_ID == 1:
+        diameter = _diameter.text
+        pitch = _pitch.text
+        PitHlx = float(pitHelix)
+    else:
+        diameter = repr(float(Ediameter) * 25.4)             # Convert all English values to mm before processing the data
+        pitch = repr((1.0 / float(Epitch)) * 25.4)
+        PitHlx = (1.0 / float(EpitHelix)) * 25.4
     OD = float(diameter)
-    PitHlx = float(pitHelix)                        # Convert helix pitch to floating point
     PitHlx1 = PitHlx * .1                           # Convert helix pitch to mm
     calcPts(OD, float(pitch), PitHlx1, 0)           # Calculates P1, P2, P3, P4 used here
     X_Dist = (abs(P2.x) - abs(P1.x)) * 10.0
@@ -407,16 +413,26 @@ def CalcThread(iTest):
         Y_Dist = abs((abs(P3.y) + abs(P2.y)) * 10.0)
     else:
         Y_Dist = abs((abs(P4.y) + abs(P1.y)) * 10.0)
-    Thread_Wid = "{:.4f}".format(X_Dist)
-    Thread_Ht = "{:.4f}".format(Y_Dist)
+    if Eng_ID == 1:
+        Thread_Wid = "{:.4f}".format(X_Dist)
+        Thread_Ht = "{:.4f}".format(Y_Dist)
  # Only change Cham_Wid initially when iTest == 0
- # otherwise the update routine that calls this will change it
-    if iTest == 0:
-        F_Cham_Wid = (X_Dist * 1.5)
-        Cham_Wid = "{:.4f}".format(F_Cham_Wid)
-        _Cham_Wid.text = Cham_Wid
-    _Thread_Wid.text = Thread_Wid
-    _Thread_Ht.text = Thread_Ht
+ # otherwise the update routine that calls this will change it & user would never be able to adjust Cham_Wid within dialog box
+        if iTest == 0:
+            F_Cham_Wid = (X_Dist * 1.9)
+            Cham_Wid = "{:.4f}".format(F_Cham_Wid)
+            _Cham_Wid.text = Cham_Wid
+        _Thread_Wid.text = Thread_Wid
+        _Thread_Ht.text = Thread_Ht
+    else:
+        Thread_EWid = "{:.4f}".format(X_Dist / 25.4)
+        Thread_EHt = "{:.4f}".format(Y_Dist / 25.4)
+        if iTest == 0:
+            F_Cham_EWid = ((X_Dist / 25.4) * 1.9)
+            Cham_EWid = "{:.4f}".format(F_Cham_EWid)
+            _Cham_EWid.text = Cham_EWid
+        _Thread_EWid.text = Thread_EWid
+        _Thread_EHt.text = Thread_EHt
 ##########################################################################
 def calcPts(OD, Pitch, PitHlx1, iflag):
     global R_Min1
@@ -425,7 +441,6 @@ def calcPts(OD, Pitch, PitHlx1, iflag):
     global AngT, AngB
     global P00
     global P1, P2, P3, P4, P5
-    global Y_B, Y_T
     PI1 = math.pi
 # We want to use the absolute value of largest angle to use with formulas to get R_Min
     angleTop = _angleTop.text
@@ -515,6 +530,9 @@ def calcPts(OD, Pitch, PitHlx1, iflag):
     return(points)
 ##########################################################################
 def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Check, iflag, iTY_Char):
+    global sketch_Helix
+    global sketch_Profile
+    global P100, P101, P102, P103, P104, P105
     try:
         Ht1 = Ht * .1
         PitHlx1 = PitHlx * .1
@@ -528,8 +546,6 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
         P5 = pts[5]
         X0 = pts[6]                     # Have to do this way, because setting this to global in
         R_Min = pts[7]                  # calcPts(0) does not seem to work & does not make sense to me
-        global sketch_Helix
-        global sketch_Profile
         i_Error = 0
         if RL_Check == 'Y' and iflag == 1:
             P100 = adsk.core.Point3D.create(P1.x, P1.y + 1.0, 0)
@@ -583,8 +599,6 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
                 points = [P00, P1, P2, P3, P45]                             # Next profile overlaps, so use intersection P45 instead of P4, P5
                 draw_lines_between_points(sketch_Profile, points, iflag)    # Draw 1st thread profile before loop
                 P1 = adsk.core.Point3D.create(P45.x, P45.y + PitHlx1, 0)     # Change P1 to vertically below P45 intersection Point
-                msg = f'After draw_lines_between_points -- P1.x = {P1.x}   P1.y = {P1.y}<br>P45.x = {P45.x}   P1.y = {P45.y}<br>PitHlx = {PitHlx}   PitHlx1 = {PitHlx1}'
-                ui.messageBox(msg)
                 points = [P1, P2, P3, P45]
             else:
                 points = [P00, P1, P2, P3, P4, P5]                          # Create a list of points to start multiple thread profiles
@@ -646,7 +660,7 @@ def Old_DrawPatternThreads(PitHlx, rev):
     quantityOne = adsk.core.ValueInput.createByString('1')      # quantity along X-Axis Not really used
     distanceOne = adsk.core.ValueInput.createByString('1 cm')   # distance along X-Axis not really used
     quantityTwo = adsk.core.ValueInput.createByString(str(rev))
-    distanceTwo = adsk.core.ValueInput.createByString(str (PitHlx))
+    distanceTwo = adsk.core.ValueInput.createByString(repr (PitHlx))
 # Create the input for rectangular pattern
     rectangularPatterns = subComp1.features.rectangularPatternFeatures
     rectangularPatternInput = rectangularPatterns.createInput(inputEntites, xAxis, quantityOne, distanceOne, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
@@ -656,6 +670,7 @@ def Old_DrawPatternThreads(PitHlx, rev):
     rectangularFeature = rectangularPatterns.add(rectangularPatternInput)
 ###################################################################################################
 def DrawPatternThreads(PitHlx, rev):
+    PitHlx2 = PitHlx * .1
     bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
     numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used
     targetBody = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawnf
@@ -663,12 +678,15 @@ def DrawPatternThreads(PitHlx, rev):
     inputEntites = adsk.core.ObjectCollection.create()
     inputEntites.add(targetBody)
     path = subComp1.features.createPath(Vert_Line)
+    General_Precision = preferences.unitAndValuePreferences.generalPrecision        # Get current precision
+    preferences.unitAndValuePreferences.generalPrecision = 9                    # Set to maximum of 9 before running the pathPatterns code
     patternQuantity = adsk.core.ValueInput.createByReal(rev)
-    patternDistance = adsk.core.ValueInput.createByReal(PitHlx * .1)
+    patternDistance = adsk.core.ValueInput.createByReal(PitHlx2)
     pathPatterns = subComp1.features.pathPatternFeatures
     pathPatternInput = pathPatterns.createInput(inputEntites, path, patternQuantity, patternDistance, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
 # Create the path pattern
     pathFeature = pathPatterns.add(pathPatternInput)
+    preferences.unitAndValuePreferences.generalPrecision = General_Precision        # Set precision back to what user had
 ###################################################################################################
 # find intersection point of Line P01, P02 and P03, P04
 def findIntersection(P01, P02, P03, P04):
@@ -683,7 +701,6 @@ def findIntersection(P01, P02, P03, P04):
     px= ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) ) 
     py= ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) )
     return(adsk.core.Point3D.create(px, py, 0))
-    #return [px, py]
 def calculate_intersection(P3, P4, P5, P22):
     # Calculate the coefficients for the lines
     A1 = abs(P4.y) - abs(P3.y)
@@ -822,6 +839,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     # General logging for debug.
     futil.log(f'{CMD_NAME} Command Created Event')
     global Fname
+    global EFname
     global csvData
     global diameter
     global height
@@ -837,6 +855,17 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     global Cham_Wid
     global Thread_Wid
     global Thread_Ht
+    global Cham_EWid
+    global Thread_EWid
+    global Thread_EHt
+    
+    global Ediameter
+    global Epitch
+    global EpitHelix
+    global Eheight
+    global _Ediameter
+    global _Epitch
+    global _EpitHelix
 
     global Bolt_Sides
     global BoltFlat_Dia 
@@ -845,9 +874,13 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     global NutFlat_Dia
     global NutHd_Ht
     global MF_Gap
-    global dropDownCommandInput
+
+    global dropdownInputEM
+    global dropDownCommand_MInput
+    global dropDownCommand_EInput
     global dropdownInput3
     global Metdata
+    global Engdata
     global _diameter
     global _pitch
     global _pitHelix
@@ -861,20 +894,43 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     global _Thread_Wid
     global _Thread_Ht
     global _MF_Gap
-    global P100, P101, P102, P103, P104, P105
+    global _Cham_EWid
+    global _Thread_EWid
+    global _Thread_EHt
+    global group_Minput
+    global group_Einput
+    global group_M2input
+    global group_E2input
+    global ME_Units
+
+    global _BoltFlat_EDia
+    global _BoltHd_EHt
+    global _NutFlat_EDia
+    global _NutHd_EHt
+    global BoltFlat_EDia
+    global BoltHd_EHt
+    global NutFlat_EDia
+    global NutHd_EHt
     # https://help.autodesk.com/view/fusion360/ENU/?contextId=CommandInputs
     current_folder = get_current_folder()           #Get the folder this program is located in
 
+    unitsMgr = app.activeProduct.unitsManager
+    defaultUnits = unitsMgr.defaultLengthUnits  # Returns the default length unit, e.g., "cm" or "in"
+    
+    ME_Units = 'M'
+    if defaultUnits == 'in' or defaultUnits == 'ft':
+        ME_Units = 'E'
     cmd = args.command    
     inputs = cmd.commandInputs
-    cmd.setDialogInitialSize(380, 662)
+    cmd.setDialogInitialSize(400, 780)
 # Create tab input 1
     tabCmdInput1 = inputs.addTabCommandInput('_Threads', 'Threads')
     tab1ChildInputs = tabCmdInput1.children
 # Create tab input 2
     tabCmdInput2 = inputs.addTabCommandInput('_BoltNut', 'Bolts and Nuts')
     tab2ChildInputs = tabCmdInput2.children
-    Fname = current_folder + '\\' + 'DialogInput_V9.txt'   #This is the Default Input file from previous entries
+    Fname = current_folder + '\\' + 'DialogInput_V9.txt'     # This is the Default Input file from previous entries
+    EFname = current_folder + '\\' + 'EDialogInput_V9.txt'   # This is the Default Input file from previous entries
     if file_exists(Fname):
         DialogName = open(Fname, 'r')
 # Read variables from the text file if it exists
@@ -912,7 +968,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         diameter = '6'
         pitch = '1'
         pitHelix = '1'
-        height = '5'
+        height = '10'
         angleTop = '30'
         angleBot = '30'
         splinePts = '18'
@@ -934,6 +990,67 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         Cham_Wid = '1.015'
         Thread_Wid = '0.6766'
         Thread_Ht = '0.9375'
+    if file_exists(EFname):
+        DialogName = open(EFname, 'r')
+# Read variables from the text file if it exists
+        with DialogName as f:
+            reader = list(csv.reader(f))
+        DialogName.close
+        for csvData in reader:
+            Ediameter = csvData[0]
+            Epitch = csvData[1]                     # Pitch is Threads per inch (TPI) in English
+            EpitHelix = csvData[2]
+            Eheight = csvData[3]
+            angleTop = csvData[4]
+            angleBot = csvData[5]
+            splinePts = csvData[6]
+            GR_Char = csvData[7]
+            RL_Char = csvData[8]
+            ST_Char = csvData[9]
+            TY_Char = csvData[10]
+
+            Bolt_Sides = csvData[11]
+            BoltFlat_EDia = csvData[12]
+            BoltHd_EHt = csvData[13]
+            Nut_Sides = csvData[14]
+            NutFlat_EDia = csvData[15]
+            NutHd_EHt = csvData[16]
+            MF_Gap = csvData[17]
+            CT_Check = csvData[18]          # Chamfer Top of Threads
+            CN_Check = csvData[19]          # Chamfer Both ends of Nut
+            RL_Check = csvData[20]
+            Cham_EWid = csvData[21]
+            Thread_EWid = csvData[22]
+            Thread_EHt = csvData[23]
+# File does not exist, so set the defaults to these
+#Metric		Diameter	TPI	Metric OD mm	Metric Pitch	Hex Bolt Flat Diameter	Hex Head Thickness	Hex Nut Thickness	Chamfer Width	Thread Width	Thread Height	Thread Angle
+#E 1/4-20 UNC	0.25		20	6.35		1.27		0.4375			0.163			0.21875			1.0311		0.6874		0.9525		30
+    else:
+        Ediameter = "0.25"
+        Epitch = "20"
+        EpitHelix = "20"
+        Eheight = '1.0'
+        angleTop = '30'
+        angleBot = '30'
+        splinePts = '18'
+        GR_Char = 'P'
+        RL_Char = 'R'
+        ST_Char = '1'
+        TY_Char = '5'
+ 
+        Bolt_Sides = '6'
+        BoltFlat_EDia = '.4375'
+        BoltHd_EHt = '.156'
+        Nut_Sides = '6'
+        NutFlat_EDia = '.4375'
+        NutHd_EHt = '.219'
+        MF_Gap = '0.3'
+        CT_Check = 'Y'
+        CN_Check = 'Y'
+        RL_Check = 'N'
+        Cham_EWid = '0.0406'
+        Thread_EWid = '0.0271'
+        Thread_EHt = '0.0375'
     in_err = 0
     if is_valid_float(diameter) == False:
         diameter = '6'
@@ -1017,9 +1134,9 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
         with open(Fname, 'w') as csvfile:
             csvfile.write(OutString)
-        csvfile.close  
+        csvfile.close
 # Create a dropdown command input
-    dropDown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle);
+    dropDown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown0Items = dropDown0CommandInput.listItems
     if TY_Char == '1':
         dropdown0Items.add('1 - Single Thread Only', True, '')
@@ -1051,7 +1168,20 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         dropdown0Items.add('3 - Threads M/F', False, '')
         dropdown0Items.add('4 - Nut Thread', False, '')
         dropdown0Items.add('5 - Bolt & Nut Threads', True, '')
-    dropDownCommandInput = tab1ChildInputs.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle);
+    dropdownInputEM = tab1ChildInputs.addDropDownCommandInput('EnglishMetric', 'English or Metric', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdownEMItems = dropdownInputEM.listItems
+# Test what was used for the Thread direction on previous run dropDownCommand_MInput
+    if ME_Units == 'E':
+        dropdownEMItems.add('English', True, '')
+        dropdownEMItems.add('Metric', False, '')
+    else:
+        dropdownEMItems.add('English', False, '')
+        dropdownEMItems.add('Metric', True, '')
+########################     Metric Section Below  ########################
+    group_Minput = tab1ChildInputs.addGroupCommandInput('group_Minput', 'Metric Section')
+    group_Minput.isExpanded = False
+    childM = group_Minput.children
+    dropDownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
     MFname = current_folder + '\\' + 'metric_V3.csv'        #Standard Metric sizes from M3 - M30
     if file_exists(MFname):
 # Read the Metric Sizes file
@@ -1060,26 +1190,73 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         file.close()
         outstr = ""
         j = len(Metdata)
-        dropdown0Items = dropDownCommandInput.listItems
+        dropdownMItems = dropDownCommand_MInput.listItems
         for i in range(1,j):
             outstr= Metdata[i][0] + Metdata[i][1]+ "x" + Metdata[i][2]
-            dropdown0Items.add(outstr, False, '')                       #Add this Metric size to the Dropdownlist    
-    _diameter = tab1ChildInputs.addTextBoxCommandInput('diameter','Diameter (mm): ',diameter, 1, False )
-    _pitch = tab1ChildInputs.addTextBoxCommandInput('pitch', 'Thread Pitch (mm): ', pitch, 1, False)
-    _pitHelix = tab1ChildInputs.addTextBoxCommandInput('pitHelix', 'Helix Pitch (mm): ', pitHelix, 1, False)
-    tab1ChildInputs.addTextBoxCommandInput('height', 'Height (mm): ', height, 1, False)
+            dropdownMItems.add(outstr, False, '')                       #Add this Metric size to the Dropdownlist
+    _diameter = childM.addTextBoxCommandInput('diameter','Diameter (mm): ',diameter, 1, False )
+    _pitch = childM.addTextBoxCommandInput('pitch', 'Thread Pitch (mm): ', pitch, 1, False)
+    _pitHelix = childM.addTextBoxCommandInput('pitHelix', 'Helix Pitch (mm): ', pitHelix, 1, False)
+    childM.addTextBoxCommandInput('height', 'Height (mm): ', height, 1, False)
+    _Cham_Wid = childM.addTextBoxCommandInput('Cham_Wid', 'Chamfer Width (mm): ', Cham_Wid, 1, False)
+    _Thread_Wid = childM.addTextBoxCommandInput('Thread_Wid', 'Thread Width (mm): ', Thread_Wid, 1, True)
+    _Thread_Ht = childM.addTextBoxCommandInput('Thread_Ht', 'Thread Height (mm): ', Thread_Ht, 1, True)
+########################     Metric Section Above  ########################
+########################    English Section Below  ########################
+    group_Einput = tab1ChildInputs.addGroupCommandInput('group_Einput', 'English Section')
+    group_Einput.isExpanded = False
+    childE = group_Einput.children
+    dropDownCommand_EInput = childE.addDropDownCommandInput('EngType', 'English Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    EngFname = current_folder + '\\' + 'English_V3.csv'        # Standard English sizes from #6 - 2"
+    if file_exists(EngFname):
+# Read the English Sizes file
+        file = open(EngFname, "r")
+        Engdata = list(csv.reader(file, delimiter=","))
+        file.close()
+        outstr = ""
+        j = len(Engdata)
+        dropdownEItems = dropDownCommand_EInput.listItems
+        for i in range(1,j):
+            outstr= Engdata[i][0] + Engdata[i][1]+ "x" + Engdata[i][2]
+            dropdownEItems.add(outstr, False, '')                       #Add this Metric size to the Dropdownlist
+    _Ediameter = childE.addTextBoxCommandInput('Ediameter','Diameter (In): ',Ediameter, 1, False )
+    _Epitch = childE.addTextBoxCommandInput('Epitch', 'Threads Per Inch (In): ', Epitch, 1, False)
+    _EpitHelix = childE.addTextBoxCommandInput('EpitHelix', 'Helix Per Inch (In): ', EpitHelix, 1, False)
+    childE.addTextBoxCommandInput('Eheight', 'Height (In): ', Eheight, 1, False)
+    _Cham_EWid = childE.addTextBoxCommandInput('Cham_EWid', 'Chamfer Width (In): ', Cham_EWid, 1, False)
+    _Thread_EWid = childE.addTextBoxCommandInput('Thread_EWid', 'Thread Width (In): ', Thread_EWid, 1, True)
+    _Thread_EHt = childE.addTextBoxCommandInput('Thread_EHt', 'Thread Height (In): ', Thread_EHt, 1, True)
+########################  English Section Above  ########################
     _angleTop = tab1ChildInputs.addTextBoxCommandInput('angleTop', 'Top Angle (deg): ', angleTop, 1, False)
     _angleBot = tab1ChildInputs.addTextBoxCommandInput('angleBot', 'Bottom Angle (deg): ', angleBot, 1, False)
     tab1ChildInputs.addTextBoxCommandInput('splinePts', 'Helix Spline Points: ', splinePts, 1, False)
     tab2ChildInputs.addTextBoxCommandInput('Bolt_Sides', '# of Bolt Head Sides: ', Bolt_Sides, 1, False)
-    _BoltFlat_Dia = tab2ChildInputs.addTextBoxCommandInput('BoltFlat_Dia', 'Bolt Head Flat Dia: ', BoltFlat_Dia, 1, False)
-    _BoltHd_Ht = tab2ChildInputs.addTextBoxCommandInput('BoltHd_Ht', 'Bolt Head Height: ', BoltHd_Ht, 1, False)
     tab2ChildInputs.addTextBoxCommandInput('Nut_Sides', '# of Sides of Nut: ', Nut_Sides, 1, False)
-    _NutFlat_Dia = tab2ChildInputs.addTextBoxCommandInput('NutFlat_Dia', 'Nut Flat Dia: ', NutFlat_Dia, 1, False)
-    _NutHd_Ht = tab2ChildInputs.addTextBoxCommandInput('NutHd_Ht', 'Nut Height: ', NutHd_Ht, 1, False)
+########################  Metric Tab2 Section Below   ########################
+    group_M2input = tab2ChildInputs.addGroupCommandInput('group_M2input', 'Metric Bolts/Nuts Section')
+    group_M2input.isExpanded = False
+    childM2 = group_M2input.children
+    _BoltFlat_Dia = childM2.addTextBoxCommandInput('BoltFlat_Dia', 'Bolt Head Flat Dia: ', BoltFlat_Dia, 1, False)
+    _BoltHd_Ht = childM2.addTextBoxCommandInput('BoltHd_Ht', 'Bolt Head Height: ', BoltHd_Ht, 1, False)
+    _NutFlat_Dia = childM2.addTextBoxCommandInput('NutFlat_Dia', 'Nut Flat Dia: ', NutFlat_Dia, 1, False)
+    _NutHd_Ht = childM2.addTextBoxCommandInput('NutHd_Ht', 'Nut Height: ', NutHd_Ht, 1, False)
+########################  English Tab2 Section Below   ########################
+    group_E2input = tab2ChildInputs.addGroupCommandInput('group_E2input', 'English Bolts/Nuts Section')
+    group_E2input.isExpanded = False
+    childE2 = group_E2input.children
+    _BoltFlat_EDia = childE2.addTextBoxCommandInput('BoltFlat_EDia', 'Bolt Head Flat Dia: ', BoltFlat_EDia, 1, False)
+    _BoltHd_EHt = childE2.addTextBoxCommandInput('BoltHd_EHt', 'Bolt Head Height: ', BoltHd_EHt, 1, False)
+    _NutFlat_EDia = childE2.addTextBoxCommandInput('NutFlat_EDia', 'Nut Flat Dia: ', NutFlat_EDia, 1, False)
+    _NutHd_EHt = childE2.addTextBoxCommandInput('NutHd_EHt', 'Nut Height: ', NutHd_EHt, 1, False)
 # Create dropdown input with test list style.
-    dropdownInput1 = tab1ChildInputs.addDropDownCommandInput('GuideRail', 'Helix, Pattern or Long Helix Guide:', adsk.core.DropDownStyles.TextListDropDownStyle);
+    dropdownInput1 = tab1ChildInputs.addDropDownCommandInput('GuideRail', 'Helix, Pattern or Long Helix Guide:', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown1Items = dropdownInput1.listItems
+    if ME_Units == 'M':
+        group_Minput.isExpanded = True
+        group_M2input.isExpanded = True
+    else:
+        group_Einput.isExpanded = True
+        group_E2input.isExpanded = True
 # Test what was used for the guideline on previous run
 # H = Single Helix & Threads complete length
 # C = Center line Guide Rail                                We are disabling this for now, since it does not work well
@@ -1105,7 +1282,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         dropdown1Items.add('Pattern', False, '')
         #dropdown1Items.add('CenterLine', False, '')
         dropdown1Items.add('LongHelix', True, '')
-    dropdownInput2 = tab1ChildInputs.addDropDownCommandInput('RightLeft', 'Right or Left Threads', adsk.core.DropDownStyles.TextListDropDownStyle);
+    dropdownInput2 = tab1ChildInputs.addDropDownCommandInput('RightLeft', 'Right or Left Threads', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown2Items = dropdownInput2.listItems
 # Test what was used for the Thread direction on previous run
     if RL_Char == 'R':
@@ -1114,7 +1291,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     else:
         dropdown2Items.add('Right', False, '')
         dropdown2Items.add('Left', True, '')
-    dropdownInput3 = tab1ChildInputs.addDropDownCommandInput('Starts', 'Number of Thread Starts', adsk.core.DropDownStyles.TextListDropDownStyle);
+    dropdownInput3 = tab1ChildInputs.addDropDownCommandInput('Starts', 'Number of Thread Starts', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown3Items = dropdownInput3.listItems
     if ST_Char == '1':
         dropdown3Items.add('1 Start', True, '')
@@ -1128,9 +1305,6 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         dropdown3Items.add('1 Start', False, '')
         dropdown3Items.add('2 Start', False, '')
         dropdown3Items.add('4 Start', True, '')
-    _Cham_Wid = tab1ChildInputs.addTextBoxCommandInput('Cham_Wid', 'Chamfer Width (mm): ', Cham_Wid, 1, False)
-    _Thread_Wid = tab1ChildInputs.addTextBoxCommandInput('Thread_Wid', 'Thread Width (mm): ', Thread_Wid, 1, True)
-    _Thread_Ht = tab1ChildInputs.addTextBoxCommandInput('Thread_Ht', 'Thread Height (mm): ', Thread_Ht, 1, True)
     if CT_Check == 'Y':
         tab1ChildInputs.addBoolValueInput('_ChamThread', 'Chamfer Top of Thread', True, '', True)
     else:
@@ -1139,7 +1313,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         tab1ChildInputs.addBoolValueInput('_ChamNut', 'Chamfer Nut', True, '', True)
     else:
         tab1ChildInputs.addBoolValueInput('_ChamNut', 'Chamfer Nut', True, '', False)
-    _MF_Gap = tab1ChildInputs.addTextBoxCommandInput('MF_Gap', 'M/F thread Gap: ', MF_Gap, 1, False)
+    _MF_Gap = tab1ChildInputs.addTextBoxCommandInput('MF_Gap', 'M/F thread Gap (mm): ', MF_Gap, 1, False)
     if RL_Check == 'Y':
         tab1ChildInputs.addBoolValueInput('_RealOffset', 'Use Real Offset of Threads', True, '', True)
     else:
@@ -1162,21 +1336,17 @@ def command_execute(args: adsk.core.CommandEventArgs):
     global BodyNut_Name
 # Get a reference to your command's inputs.
     inputs = args.command.commandInputs
-    diameter: adsk.core.TextBoxCommandInput = inputs.itemById('diameter')
-    pitch: adsk.core.TextBoxCommandInput = inputs.itemById('pitch')
-    pitHelix: adsk.core.TextBoxCommandInput = inputs.itemById('pitHelix')
-    height: adsk.core.TextBoxCommandInput = inputs.itemById('height')
+    Eng_ID = dropdownInputEM.selectedItem.index         # See if user changed the default to Metric or English units
+    if Eng_ID == 0:
+        ME_Units = 'E'
+    else:
+        ME_Units = 'M'
     angleTop: adsk.core.TextBoxCommandInput = inputs.itemById('angleTop')
     angleBot: adsk.core.TextBoxCommandInput = inputs.itemById('angleBot')
     splinePts: adsk.core.TextBoxCommandInput = inputs.itemById('splinePts')
     Bolt_Sides: adsk.core.TextBoxCommandInput = inputs.itemById('Bolt_Sides')
-    BoltFlat_Dia: adsk.core.TextBoxCommandInput = inputs.itemById('BoltFlat_Dia')
-    BoltHd_Ht: adsk.core.TextBoxCommandInput = inputs.itemById('BoltHd_Ht')
     Nut_Sides: adsk.core.TextBoxCommandInput = inputs.itemById('Nut_Sides')
-    NutFlat_Dia: adsk.core.TextBoxCommandInput = inputs.itemById('NutFlat_Dia')
-    NutHd_Ht: adsk.core.TextBoxCommandInput = inputs.itemById('NutHd_Ht')
-    MF_Gap: adsk.core.TextBoxCommandInput = inputs.itemById('MF_Gap')
-    Cham_Wid: adsk.core.TextBoxCommandInput = inputs.itemById('Cham_Wid')
+    MF_Gap: adsk.core.TextBoxCommandInput = inputs.itemById('MF_Gap')                   # Making this mm for both English & Metric
     dropDownInput1 = inputs.itemById('GuideRail')
     GuideRail = dropDownInput1.selectedItem.name
     dropDownInput2 = inputs.itemById('RightLeft')
@@ -1197,21 +1367,61 @@ def command_execute(args: adsk.core.CommandEventArgs):
         CN_Check = 'Y'
     if _RealOffset.value:
         RL_Check = 'Y'
-    diameter = diameter.text
-    pitch = pitch.text
-    pitHelix = pitHelix.text
-    height = height.text
+    if ME_Units == "E":
+        Ediameter: adsk.core.TextBoxCommandInput = inputs.itemById('Ediameter')
+        Epitch: adsk.core.TextBoxCommandInput = inputs.itemById('Epitch')
+        EpitHelix: adsk.core.TextBoxCommandInput = inputs.itemById('EpitHelix')
+        Eheight: adsk.core.TextBoxCommandInput = inputs.itemById('Eheight')
+        Cham_EWid: adsk.core.TextBoxCommandInput = inputs.itemById('Cham_EWid')
+        BoltFlat_EDia: adsk.core.TextBoxCommandInput = inputs.itemById('BoltFlat_EDia')
+        BoltHd_EHt: adsk.core.TextBoxCommandInput = inputs.itemById('BoltHd_EHt')
+        NutFlat_EDia: adsk.core.TextBoxCommandInput = inputs.itemById('NutFlat_EDia')
+        NutHd_EHt: adsk.core.TextBoxCommandInput = inputs.itemById('NutHd_EHt')
+        Ediameter = Ediameter.text
+        Epitch = Epitch.text
+        EpitHelix = EpitHelix.text
+        Eheight = Eheight.text
+        Cham_EWid = Cham_EWid.text
+        BoltFlat_EDia = BoltFlat_EDia.text
+        BoltHd_EHt = BoltHd_EHt.text
+        NutFlat_EDia = NutFlat_EDia.text
+        NutHd_EHt = NutHd_EHt.text
+# Not doing error checks just yet
+        diameter = repr(float(Ediameter) * 25.4)             # Convert all English values to mm before processing the data
+        pitch = repr((1.0 / float(Epitch)) * 25.4)
+        pitHelix = repr((1.0 / float(EpitHelix)) * 25.4)
+        height = repr(float(Eheight) * 25.4)
+
+        Cham_Wid = repr(float(Cham_EWid) * 25.4)
+        BoltFlat_Dia = repr(float(BoltFlat_EDia) * 25.4)
+        BoltHd_Ht = repr(float(BoltHd_EHt) * 25.4)
+        NutFlat_Dia = repr(float(NutFlat_EDia) * 25.4)
+        NutHd_Ht = repr(float(NutHd_EHt) * 25.4)
+    else:
+        diameter: adsk.core.TextBoxCommandInput = inputs.itemById('diameter')
+        pitch: adsk.core.TextBoxCommandInput = inputs.itemById('pitch')
+        pitHelix: adsk.core.TextBoxCommandInput = inputs.itemById('pitHelix')
+        height: adsk.core.TextBoxCommandInput = inputs.itemById('height')
+        BoltFlat_Dia: adsk.core.TextBoxCommandInput = inputs.itemById('BoltFlat_Dia')
+        BoltHd_Ht: adsk.core.TextBoxCommandInput = inputs.itemById('BoltHd_Ht')
+        NutFlat_Dia: adsk.core.TextBoxCommandInput = inputs.itemById('NutFlat_Dia')
+        NutHd_Ht: adsk.core.TextBoxCommandInput = inputs.itemById('NutHd_Ht')
+        Cham_Wid: adsk.core.TextBoxCommandInput = inputs.itemById('Cham_Wid')
+        diameter = diameter.text
+        pitch = pitch.text
+        pitHelix = pitHelix.text
+        height = height.text
+        Cham_Wid = Cham_Wid.text
+        BoltFlat_Dia = BoltFlat_Dia.text
+        BoltHd_Ht = BoltHd_Ht.text
+        NutFlat_Dia = NutFlat_Dia.text
+        NutHd_Ht = NutHd_Ht.text
     angleTop = angleTop.text
     angleBot = angleBot.text
     splinePts = splinePts.text
     Bolt_Sides = Bolt_Sides.text
-    BoltFlat_Dia = BoltFlat_Dia.text
-    BoltHd_Ht = BoltHd_Ht.text
     Nut_Sides = Nut_Sides.text
-    NutFlat_Dia = NutFlat_Dia.text
-    NutHd_Ht = NutHd_Ht.text
     MF_Gap = MF_Gap.text
-    Cham_Wid = Cham_Wid.text
     Ht = float(height)
 # Make sure height is a positive number
     if Ht < 0:
@@ -1232,22 +1442,36 @@ def command_execute(args: adsk.core.CommandEventArgs):
     elif ST_Num == '4 Start':
         iST_Char = 4      
     ST_Char = str (iST_Char)
+    sPts = int(splinePts)
+    start = time.time()
 # Write back user inputs as defaults for next time
 # Putting the code below in a subroutine does not use the global variables for some reason & it does not make any sense to me.
 # If I print pitHelix and MF_Gap before this & put the following 6 lines in a subroutine, the subroutine will use the values from when it 1st read the DialogInput_V9.txt file & not current values
 # so I have to duplicate the code to get it to work correctly.
-    BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
-    OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
-    with open(Fname, 'w') as csvfile:
-        csvfile.write(OutString)
-    csvfile.close  
-    Body_Name = "M" + diameter + "_" + pitch + "TPx" + pitHelix + "HPx" + height + "mm" + "_" + RL_Char + "_" + angleTop + "D_" + angleBot + "D_" + splinePts + "spts_" + GR_Char + "_Guide"
-
-    sPts = int(splinePts)
-    start = time.time()
-    OD = float(diameter)
-    Pit = float(pitch)
-    PitHlx = float(pitHelix)
+    if ME_Units == 'M':
+        BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
+        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
+        with open(Fname, 'w') as csvfile:
+            csvfile.write(OutString)
+        csvfile.close
+        Body_Name = "M" + diameter + "_" + pitch + "TPx" + pitHelix + "HPx" + height + "mm" + "_" + RL_Char + "_" + angleTop + "D_" + angleBot + "D_" + splinePts + "spts_" + GR_Char + "_Guide"
+        OD = float(diameter)
+        Pit = float(pitch)
+        PitHlx = float(pitHelix)
+        F_Height = float(height)
+        F_Cham_Wid = float(Cham_Wid)
+    else:
+        BoltNut = Bolt_Sides + "," + BoltFlat_EDia + "," + BoltHd_EHt + "," + Nut_Sides + "," + NutFlat_EDia + "," + NutHd_EHt + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_EWid + "," + Thread_EWid + "," + Thread_EHt
+        OutString = Ediameter +',' + Epitch +',' + EpitHelix + ',' + Eheight +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
+        with open(EFname, 'w') as csvfile:
+            csvfile.write(OutString)
+        csvfile.close
+        Body_Name = Ediameter + "_" + Epitch + "TPIx" + EpitHelix + "HTPIx" + Eheight + '"' + "_" + RL_Char + "_" + angleTop + "D_" + angleBot + "D_" + splinePts + "spts_" + GR_Char + "_Guide"
+        OD = float(Ediameter) * 25.4
+        Pit = (1.0 / float(Epitch)) * 25.4
+        PitHlx = (1.0 / float(EpitHelix)) * 25.4
+        F_Height = float(Eheight) * 25.4
+        F_Cham_Wid = float(Cham_EWid) * 25.4
 # Create New Component for all this geometry to start with
     Tstart = design.timeline.markerPosition
     CreateNewComponent()
@@ -1257,8 +1481,6 @@ def command_execute(args: adsk.core.CommandEventArgs):
 # 3 - Threads M/F
 # 4 - Nut Thread
 # 5 - Bolt & Nut Threads
-    F_Height = float(height)
-    F_Cham_Wid = float(Cham_Wid)
     iTY_Char = int(TY_Char)
     if iTY_Char != 4:
         DrawThreads(OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 0, iTY_Char)
@@ -1270,11 +1492,14 @@ def command_execute(args: adsk.core.CommandEventArgs):
         NH_Ht = float(NutHd_Ht)
         Nt_Thread_Ht = NH_Ht + Pit + Pit
         bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
-        iBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
+        iBodies = bsubComp1_bodies.count                    # Get a count of the bodies used, should be 3
         if iBodies > 0:
-            hide_body(body1)                        # Hide the Bolt Threads
-        OD1 = (float(MF_Gap) * 2.0)  + OD       # Used if not doing real offsets of threads
-        BodyNut_Name = "M" + diameter + "_" + MF_Gap + "_MF_Gap_Nut"
+            hide_body(body1)                                # Hide the Bolt Threads
+        OD1 = (float(MF_Gap) * 2.0)  + OD                   # Used if not doing real offsets of threads
+        if ME_Units == 'M':
+            BodyNut_Name = "M" + diameter + "_" + MF_Gap + "_MF_Gap_Nut"
+        else:
+            BodyNut_Name = Ediameter + "_" + Epitch + "TPIx" + EpitHelix + "HTPIx" + "_" + MF_Gap + "mm_MF_Gap_Nut"
         if RL_Check == 'Y':
             if iTY_Char == 3:
                 DrawThreads(OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
@@ -1328,10 +1553,10 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
     #ui.messageBox(msg)
     a_ID = args.input.id                    # Shorten name, since we test this a lot
     i_Calc = 0
-    if a_ID == 'MetType' or a_ID == 'diameter' or a_ID == 'pitch' or a_ID == 'angleTop' or a_ID == 'angleBot' or a_ID =='Starts':
+    if a_ID == 'diameter' or a_ID == 'pitch' or a_ID == 'angleTop' or a_ID == 'angleBot' or a_ID =='Starts':
         i_Calc = 1
     if a_ID == 'MetType':
-        Met_ID = dropDownCommandInput.selectedItem.index
+        Met_ID = dropDownCommand_MInput.selectedItem.index
         Met_ID = Met_ID + 1
 
         diameter = Metdata[Met_ID][1]
@@ -1357,14 +1582,46 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
         _Cham_Wid.text = Cham_Wid
         _Thread_Wid.text = Thread_Wid
         _Thread_Ht.text = Thread_Ht
-        i_Calc = 1
+        i_Calc = 2
+    elif a_ID == "EngType":
+        Eng_ID = dropDownCommand_EInput.selectedItem.index
+        Eng_ID = Eng_ID + 1
+
+        Ediameter = Engdata[Eng_ID][1]
+        Epitch = Engdata[Eng_ID][2]
+        EpitHelix = Engdata[Eng_ID][2]
+        BoltFlat_EDia = Engdata[Eng_ID][3]
+        BoltHd_EHt = Engdata[Eng_ID][4]
+        NutFlat_EDia = Engdata[Eng_ID][3]
+        NutHd_EHt = Engdata[Eng_ID][5]
+        Cham_Wid = Engdata[Eng_ID][6]
+        Thread_Wid = Engdata[Eng_ID][7]
+        Thread_Ht = Engdata[Eng_ID][8]
+        _Ediameter.text = Ediameter
+        _Epitch.text = Epitch
+        _EpitHelix.text = EpitHelix
+        _BoltFlat_EDia.text = BoltFlat_EDia
+        _BoltHd_EHt.text = BoltHd_EHt
+        _NutFlat_EDia.text = NutFlat_EDia
+        _NutHd_EHt.text = NutHd_EHt
+        _Cham_Wid.text = Cham_Wid
+        _Thread_Wid.text = Thread_Wid
+        _Thread_Ht.text = Thread_Ht
+        i_Calc = 2
+    elif a_ID == "EnglishMetric":
+        EM_ID = dropdownInputEM.selectedItem.index      # 0 = English 1 = Metric
+        if EM_ID == 0:
+            group_E2input.isExpanded = True
+            group_M2input.isExpanded = False
+        else:
+            group_E2input.isExpanded = False
+            group_M2input.isExpanded = True
     elif args.input.id == 'Starts':
         IDX = dropdownInput3.selectedItem.index
-        #pitch = _pitch.text                         # ReCalcHelix does not access global variable pitch for some reason, so send it to it
         ReCalcHelixPitch(IDX)
 # Only run this routine when we need to
     if i_Calc == 1:
-        CalcThread(1)
+        CalcThread(0)
 # General logging for debug.
     futil.log(f'{CMD_NAME} Input Changed Event fired from a change to {changed_input.id}')
 # This event handler is called when the user interacts with any of the inputs in the dialog

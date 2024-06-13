@@ -852,6 +852,8 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     global RL_Char
     global ST_Char
     global TY_Char
+    global TYE_Char
+    global TYM_Char
     global Cham_Wid
     global Thread_Wid
     global Thread_Ht
@@ -948,7 +950,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             GR_Char = csvData[7]
             RL_Char = csvData[8]
             ST_Char = csvData[9]
-            TY_Char = csvData[10]
+            TYM_Char = csvData[10]
 
             Bolt_Sides = csvData[11]
             BoltFlat_Dia = csvData[12]
@@ -975,7 +977,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         GR_Char = 'P'
         RL_Char = 'R'
         ST_Char = '1'
-        TY_Char = '5'
+        TYM_Char = '5'
  
         Bolt_Sides = '6'
         BoltFlat_Dia = '10'
@@ -1007,7 +1009,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             GR_Char = csvData[7]
             RL_Char = csvData[8]
             ST_Char = csvData[9]
-            TY_Char = csvData[10]
+            TYE_Char = csvData[10]
 
             Bolt_Sides = csvData[11]
             BoltFlat_EDia = csvData[12]
@@ -1036,7 +1038,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         GR_Char = 'P'
         RL_Char = 'R'
         ST_Char = '1'
-        TY_Char = '5'
+        TYE_Char = '5'
  
         Bolt_Sides = '6'
         BoltFlat_EDia = '.4375'
@@ -1091,12 +1093,19 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     if RL_Check != 'Y' and RL_Check != 'N':
         RL_Check = 'Y'
         in_err = 112
-    if is_valid_int(TY_Char) == False:
-        TY_Char = '5'
+    if is_valid_int(TYM_Char) == False:
+        TYM_Char = '5'
         in_err = 113
     else:
-        if int(TY_Char) > 5 or int(TY_Char) < 1:
-            TY_Char = '5'
+        if int(TYM_Char) > 5 or int(TYM_Char) < 1:
+            TYM_Char = '5'
+            in_err = 114
+    if is_valid_int(TYE_Char) == False:
+        TYE_Char = '5'
+        in_err = 113
+    else:
+        if int(TYE_Char) > 5 or int(TYE_Char) < 1:
+            TYE_Char = '5'
             in_err = 114
     if is_valid_int(Bolt_Sides) == False:
         Bolt_Sides = '6'
@@ -1131,10 +1140,14 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # If there was an error in the input data, write out the default values for that data
     if in_err > 0:                   
         BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
-        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
+        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TYM_Char + ',' + BoltNut
         with open(Fname, 'w') as csvfile:
             csvfile.write(OutString)
         csvfile.close
+    if ME_Units == 'M':
+        TY_Char = TYM_Char
+    else:
+        TY_Char = TYE_Char
 # Create a dropdown command input
     dropDown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown0Items = dropDown0CommandInput.listItems
@@ -1450,7 +1463,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
 # so I have to duplicate the code to get it to work correctly.
     if ME_Units == 'M':
         BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
-        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
+        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TYM_Char + ',' + BoltNut
         with open(Fname, 'w') as csvfile:
             csvfile.write(OutString)
         csvfile.close
@@ -1462,7 +1475,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
         F_Cham_Wid = float(Cham_Wid)
     else:
         BoltNut = Bolt_Sides + "," + BoltFlat_EDia + "," + BoltHd_EHt + "," + Nut_Sides + "," + NutFlat_EDia + "," + NutHd_EHt + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_EWid + "," + Thread_EWid + "," + Thread_EHt
-        OutString = Ediameter +',' + Epitch +',' + EpitHelix + ',' + Eheight +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
+        OutString = Ediameter +',' + Epitch +',' + EpitHelix + ',' + Eheight +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TYE_Char + ',' + BoltNut
         with open(EFname, 'w') as csvfile:
             csvfile.write(OutString)
         csvfile.close

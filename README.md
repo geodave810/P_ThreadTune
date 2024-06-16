@@ -71,3 +71,15 @@ TPI<br>
 9. There is an option for Real offsets which means the offset will be the same gap all the way around.  ChatGPT helped with the code for this & I commented the code where that was added.
 
 If you find this program useful to you, consider making a donation from the link on the right or purchasing one of my audio recordings of Mountain streams from Amazon in the 2nd link on the right.
+
+
+Shield: [![CC BY-NC 4.0][cc-by-nc-shield]][cc-by-nc]
+
+This work is licensed under a
+[Creative Commons Attribution-NonCommercial 4.0 International License][cc-by-nc].
+
+[![CC BY-NC 4.0][cc-by-nc-image]][cc-by-nc]
+
+[cc-by-nc]: https://creativecommons.org/licenses/by-nc/4.0/
+[cc-by-nc-image]: https://licensebuttons.net/l/by-nc/4.0/88x31.png
+[cc-by-nc-shield]: https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg

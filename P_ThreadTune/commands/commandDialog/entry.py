@@ -32,13 +32,13 @@ ICON_FOLDER = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'resource
 # they are not released and garbage collected.
 local_handlers = []
 # Create a new occurrence (component).
-def CreateNewComponent():
-    global subComp1
+def CreateNewComponent(Body_Name):
     allOccs = rootComp.occurrences
     transform = adsk.core.Matrix3D.create()
     occ1 = allOccs.addNewComponent(transform)
     subComp1 = occ1.component
     subComp1.name = Body_Name
+    return(subComp1)
 ###############################################################################################
 #############  Following routines below were generated from ChatGPT on 5/13/2024  #############
 ###############################################################################################
@@ -118,7 +118,7 @@ def draw_regular_polygon(sketch, num_sides, rad):
 #########################################################################################
 ##########  Following routines above were generated from ChatGPT on 5/13/2024  ##########
 #########################################################################################
-def create_offset_plane_from_xy(construction_plane, offset_distance):
+def create_offset_plane_from_xy(subComp1, construction_plane, offset_distance):
 # Get the construction planes collection.
     planes = subComp1.constructionPlanes
 # Get the XY construction plane.
@@ -129,17 +129,17 @@ def create_offset_plane_from_xy(construction_plane, offset_distance):
     offset_plane = planes.add(offset_plane_input)
     return offset_plane
 ##########################################################################
-def create_circle_sketch_on_plane(plane, radius):
+def create_circle_sketch_on_plane(subComp1, plane, radius):
 # Get the sketches collection of the root component.
     sketches = subComp1.sketches
 # Create a sketch on the given plane.
     sketch = sketches.add(plane)
 # Draw a circle at the origin with the given radius.
     center_point = adsk.core.Point3D.create(0, 0, 0)
-    circle = sketch.sketchCurves.sketchCircles.addByCenterRadius(center_point, radius)
+    sketch.sketchCurves.sketchCircles.addByCenterRadius(center_point, radius)
     return sketch
 ##########################################################################
-def DrawBoltHead(BoltFlat_Dia, num_sides, BoltHd_Ht):
+def DrawBoltHead(subComp1, BoltFlat_Dia, num_sides, BoltHd_Ht):
     Flat_OD = BoltFlat_Dia * .1         # Diameter between Flats
     Flat_Rad = Flat_OD / 2              # Rad of Flat Diamter
     Ang1 = 360.0 / (num_sides * 2)      # Amgle between a Vertex & center of a Flat
@@ -152,15 +152,14 @@ def DrawBoltHead(BoltFlat_Dia, num_sides, BoltHd_Ht):
     sketch_Head = sketches.add(xyPlane)
     sketch_Head.name = "sketch_Head"
 # Draw the regular polygon
-    polygon_lines = draw_regular_polygon(sketch_Head, num_sides, Rad)
+    draw_regular_polygon(sketch_Head, num_sides, Rad)
 # Get the profile defined by the Polygon.
     profPoly = sketch_Head.profiles.item(0)
     Ht2 = adsk.core.ValueInput.createByReal(-BoltHd_Ht * .1)
     extrudes = subComp1.features.extrudeFeatures
-    ext = extrudes.addSimple(profPoly, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+    extrudes.addSimple(profPoly, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
 ##########################################################################
-def DrawNut(NutFlat_Dia, num_sides, NutHd_Ht, Pitch):
-# Define the number of sides and side length of the polygon
+def DrawNut(subComp1, NutFlat_Dia, num_sides, NutHd_Ht, Pitch):
     Flat_OD = NutFlat_Dia * .1         # Diameter between Flats
     Flat_Rad = Flat_OD / 2              # Rad of Flat Diamter
     Ang1 = 360.0 / (num_sides * 2)      # Amgle between a Vertex & center of a Flat
@@ -170,18 +169,19 @@ def DrawNut(NutFlat_Dia, num_sides, NutHd_Ht, Pitch):
     sketches = subComp1.sketches
 # Get the XY construction plane.
     xy_plane = create_offset_plane_from_xy
-    offset_plane = create_offset_plane_from_xy(xy_plane, float(Pitch * .1))
+    offset_plane = create_offset_plane_from_xy(subComp1, xy_plane, float(Pitch * .1))
     sketch_Nut = sketches.add(offset_plane)
     sketch_Nut.name = "sketch_Nut"
 # Draw the regular polygon
-    polygon_lines = draw_regular_polygon(sketch_Nut, num_sides, Rad)
+    draw_regular_polygon(sketch_Nut, num_sides, Rad)
 # Get the profile defined by the Polygon.
     profPoly = sketch_Nut.profiles.item(0)
     Ht2 = adsk.core.ValueInput.createByReal(NutHd_Ht * .1)
     extrudes = subComp1.features.extrudeFeatures
-    ext = extrudes.addSimple(profPoly, Ht2, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    extrudes.addSimple(profPoly, Ht2, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
 ##########################################################################
-def ChamferTopThreads(Ht, Ch_Wid):
+def ChamferTopThreads(subComp1, Rad, Ht, Ch_Wid):
+    Rad1 = Rad * .1
     Ht1 = (Ht + .01) * .1
     Ch_Wid = abs(Ch_Wid)
     CW = Ch_Wid * .1
@@ -211,11 +211,11 @@ def ChamferTopThreads(Ht, Ch_Wid):
     angle = adsk.core.ValueInput.createByReal(math.pi * 2.0)
     revInput.setAngleExtent(False, angle)
 # Create the extrusion.
-    ext = revolves.add(revInput)
+    revolves.add(revInput)
 ##########################################################################
-def ChamferNut(Pit, Ht, Ch_Wid, iTY_Char):
+def ChamferNut(subComp1, OD1, Pit, PitHlx, Ht, Ch_Wid, iTY_Char):
     if iTY_Char < 4:
-        ChamferTopThreads(Ht,Ch_Wid)
+        ChamferTopThreads(subComp1, OD1 / 2, Ht,Ch_Wid)
     else:
         Ch_Wid = abs(Ch_Wid)
         Pit1 = Pit * .1
@@ -224,8 +224,9 @@ def ChamferNut(Pit, Ht, Ch_Wid, iTY_Char):
         Pt1 = Pit1 - .001
         YHt = (Ht1 - Pt1) / 2.0
         CW = Ch_Wid * .1                # Convert to mm
-        Y2 = Ht1 - CW
-        Y5 = Pit1 + CW
+        PitHlx1 = PitHlx * .1
+        pts = calcPts(OD1, Pit, PitHlx1)          # Run this to get R_Min
+        R_Min1 = pts[7]
         Rd1 = R_Min1 - 0.001
         X0 = Rd1 + CW
         X1 = X0 - YHt
@@ -269,7 +270,7 @@ def ChamferNut(Pit, Ht, Ch_Wid, iTY_Char):
         angle = adsk.core.ValueInput.createByReal(math.pi * 2.0)
         revInput.setAngleExtent(False, angle)
 # Create the extrusion.
-        ext = revolves.add(revInput)
+        revolves.add(revInput)
 ##########################################################################
 def count_sketch_profiles(sketch):
     profile_count = 0
@@ -278,30 +279,30 @@ def count_sketch_profiles(sketch):
             profile_count += 1
     return profile_count
 ##########################################################################
-def DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char):
+def DrawCylinder(subComp1, sketch_Helix, Rad, R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char):
     sketches = subComp1.sketches
     xyPlane = subComp1.xYConstructionPlane
     sketch_Cyl = sketches.add(xyPlane)
     sketch_Cyl.name = "Sketch_Cylinder"
 # Draw a circle.
     circles = sketch_Helix.sketchCurves.sketchCircles
-    circle1 = circles.addByCenterRadius(adsk.core.Point3D.create(0, 0, 0), R_Min)
+    circles.addByCenterRadius(adsk.core.Point3D.create(0, 0, 0), R_Min)
     circles1 = sketch_Cyl.sketchCurves.sketchCircles
-    circle2 = circles1.addByCenterRadius(adsk.core.Point3D.create(0, 0, 0), Rad1+.01)
+    circles1.addByCenterRadius(adsk.core.Point3D.create(0, 0, 0), (Rad * .1) + .01)
 # Get the profile defined by the circle.
     profCir = sketch_Helix.profiles.item(0)
     profCir1 = sketch_Cyl.profiles.item(0)
     Ht2 = adsk.core.ValueInput.createByReal(Ht1)
     extrudes = subComp1.features.extrudeFeatures
     try:
-        ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+        extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)
     except:
-        ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.CutFeatureOperation)           # sometimes Joining does not work, so if it fails try cutting 1st
-        ext = extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)          # Then join it & that worked for the problem I had with it
+        extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.CutFeatureOperation)           # sometimes Joining does not work, so if it fails try cutting 1st
+        extrudes.addSimple(profCir, Ht2, adsk.fusion.FeatureOperations.JoinFeatureOperation)          # Then join it & that worked for the problem I had with it
 # Cut the threads that are below origin
     Ht3 = adsk.core.ValueInput.createByReal(-((YB_B * 2) + (PitHlx * 2 * .1)))
     try:
-        ext1 = extrudes.addSimple(profCir1, Ht3, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extrudes.addSimple(profCir1, Ht3, adsk.fusion.FeatureOperations.CutFeatureOperation)
     except:
         msg = 'Last Cut Feature below origin in DrawCylinder failed for some reason, but might not be a problem'
         ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
@@ -310,13 +311,12 @@ def DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char):
 # Create the offset plane.
     Ht4 = float(Ht1)
     Ht5 = adsk.core.ValueInput.createByReal(YB_T * 2 + PitHlx * 2 * .1)
-    Ht6 = YB_T + 0.001 + Pitch
-    offset_plane = create_offset_plane_from_xy(xy_plane,Ht4)
+    offset_plane = create_offset_plane_from_xy(subComp1, xy_plane,Ht4)
 # Create sketch on the offset plane and draw a circle.
-    sketchTop = create_circle_sketch_on_plane(offset_plane, Rad1+.01)
+    sketchTop = create_circle_sketch_on_plane(subComp1, offset_plane, (Rad * .1) + .01)
     profCir2 = sketchTop.profiles.item(0)
     try:
-        ext_Last = extrudes.addSimple(profCir2, Ht5, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extrudes.addSimple(profCir2, Ht5, adsk.fusion.FeatureOperations.CutFeatureOperation)
     except:
         msg = 'Last Cut Feature of DrawCylinder failed for some reason, but might not be a problem'
         ui.messageBox(msg,"Warning", adsk.core.MessageBoxButtonTypes.OKButtonType, adsk.core.MessageBoxIconTypes.WarningIconType)
@@ -324,10 +324,18 @@ def DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char):
     if sketch_Cyl.isVisible:
         sketch_Cyl.isVisible = False
 ##########################################################################
-def Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag):
-    global body1
-    global Rad1
-    global sweeper
+def DrawHelix(subComp1, sketch_Helix, C_Min, Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, prof, iflag):
+    global Vert_Line
+    P10 = adsk.core.Point3D.create(0,0,Ht1)
+    rev = int(Ht / Pitch) + 1               # Number of revolutions, add one to it so we don't do a partial revolution
+    Pitch2 = Pitch * 0.1
+    Pitch1 = round(Pitch2, 6)
+# Create an object collection for the points.
+    sketchSplines = sketch_Helix.sketchCurves.sketchFittedSplines
+    sketchCenter = sketch_Helix.sketchCurves.sketchLines    # used for Centerline Guide Rail, does not work as well as Helix
+    P0 = adsk.core.Point3D.create(0,0,0)
+    Vert_Line = sketchCenter.addByTwoPoints(P0,P10)         # Draw Center Vertical for Guide Rail with Sweeep
+    Z0 = 0.0
     Rad1 = Rad * .1
     ang1 = 360.0 / sPts                             # Increment angle in degrees between horizontal spline points
     ang_R = ang1 * math.pi / 180                    # Increment angle in radians between horizontal spline points
@@ -341,6 +349,8 @@ def Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag):
     ang = 0                                         # Set beginning angle of Helix spline poing
     points = adsk.core.ObjectCollection.create()    # Create the points collection for the inner Helix Path
     points1 = adsk.core.ObjectCollection.create()   # Create the points collection for the outer Helix Guide Rail
+    pts = calcPts(Rad * 2, Pitch, Pitch1)           # Run this to get R_Min
+    R_Min1 = pts[7]
     while (Icount <= sPts_Total):
         x = R_Min1 * math.cos(ang)                  # Helix x, y points along inside Radius minus .1mm to connect multiple threads
         y = R_Min1 * math.sin(ang)
@@ -369,26 +379,9 @@ def Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag):
     sweepInput.profileScaling = adsk.fusion.SweepProfileScalingOptions.SweepProfileScaleOption
 # Create the sweep.
     sweeper = sweeps.add(sweepInput)              # This seems to be the slowest part of the code
-    if iflag ==0:
+    if iflag < 1:
         body1 = sweeper.bodies.item(0)
         body1.name = Body_Name                  # rename body to most of input parameters from main routine
-###################################################################
-def DrawHelix(Rad, Pitch, Ht, Ht1, sPts, G_Rail, RL_thread, prof, iflag):
-    global sketchSplines
-    global Vert_Line
-    P10 = adsk.core.Point3D.create(0,0,Ht1)
-    rev = int(Ht / Pitch) + 1               # Number of revolutions, add one to it so we don't do a partial revolution
-    Pitch2 = Pitch * 0.1
-    Pitch1 = round(Pitch2, 6)
-# Create an object collection for the points.
-    sketchSplines = sketch_Helix.sketchCurves.sketchFittedSplines
-    sketchCenter = sketch_Helix.sketchCurves.sketchLines    # used for Centerline Guide Rail, does not work as well as Helix
-    P0 = adsk.core.Point3D.create(0,0,0)
-    Vert_Line = sketchCenter.addByTwoPoints(P0,P10)         # Draw Center Vertical for Guide Rail with Sweeep
-    Z0 = 0.0
-    Draw_1_Helix(rev, Rad, Pitch1, sPts, Z0, G_Rail, prof, RL_thread, iflag)    # Now draw the Helix
-    if iflag == 0:
-        body1.name = Body_Name                      # rename body to most of input parameters from main routine
 ##########################################################################
 def ReCalcHelixPitch(idx):
     idx_array = [1, 2, 4]                           # 1 start, 2 start, 4 start
@@ -402,12 +395,19 @@ def CalcThread(iTest):
         pitch = _pitch.text
         PitHlx = float(pitHelix)
     else:
+        Ediameter = _Ediameter.text
         diameter = repr(float(Ediameter) * 25.4)             # Convert all English values to mm before processing the data
+        Epitch = _Epitch.text
         pitch = repr((1.0 / float(Epitch)) * 25.4)
+        EpitHelix = _EpitHelix.text
         PitHlx = (1.0 / float(EpitHelix)) * 25.4
     OD = float(diameter)
     PitHlx1 = PitHlx * .1                           # Convert helix pitch to mm
-    calcPts(OD, float(pitch), PitHlx1, 0)           # Calculates P1, P2, P3, P4 used here
+    pts = calcPts(OD, float(pitch), PitHlx1)           # Calculates P1, P2, P3, P4 used here
+    P1 = pts[1]
+    P2 = pts[2]
+    P3 = pts[3]
+    P4 = pts[4]
     X_Dist = (abs(P2.x) - abs(P1.x)) * 10.0
     if AngT < 0 or AngB < 0:
         Y_Dist = abs((abs(P3.y) + abs(P2.y)) * 10.0)
@@ -434,13 +434,10 @@ def CalcThread(iTest):
         _Thread_EWid.text = Thread_EWid
         _Thread_EHt.text = Thread_EHt
 ##########################################################################
-def calcPts(OD, Pitch, PitHlx1, iflag):
-    global R_Min1
+def calcPts(OD, Pitch, PitHlx1):
     global YB_B                                 # These 2 are used for cutting bottom & top of threads flush
     global YB_T
     global AngT, AngB
-    global P00
-    global P1, P2, P3, P4, P5
     PI1 = math.pi
 # We want to use the absolute value of largest angle to use with formulas to get R_Min
     angleTop = _angleTop.text
@@ -459,14 +456,6 @@ def calcPts(OD, Pitch, PitHlx1, iflag):
             ang = AngT
         else:
             ang = AngB
-    MF_G = float(_MF_Gap.text)
-    if AngB != 0.0 and AngT == 0.0:            
-        G_Ang = math.sin(float(AngB) * PI1/float(180.0))
-    elif AngT != 0.0 and AngB == 0.0:
-        G_Ang = math.sin(float(AngT) * PI1/float(180.0))
-    else:
-        G_Ang = math.sin(float(ang) * PI1/float(180.0))
-    gap = (MF_G * G_Ang) * 0.1                          # How much to adjust Horizontal thread Y location
     T_Ang = math.tan(float(AngT) * PI1/float(180.0))
     B_Ang = math.tan(float(AngB) * PI1/float(180.0))
     C_Ang = math.tan(float(ang) * PI1/float(180.0))
@@ -475,7 +464,6 @@ def calcPts(OD, Pitch, PitHlx1, iflag):
     H8 = H_Thread / 8
     H_5H8 = (5 * H_Thread) / 8
     H3 = ((H_5H8 + H8) * C_Ang) * 0.1
-    #P8 = Pitch / 8
     D_Min = (OD - (2 * abs(H_5H8))) * 0.1
     R_Min = D_Min / 2
     R_Min1 = D_Min / 2 - .01    # need just a little more inward to get one profile for multiple threads
@@ -529,15 +517,251 @@ def calcPts(OD, Pitch, PitHlx1, iflag):
     points = [P00, P1, P2, P3, P4, P5, X0, R_Min]
     return(points)
 ##########################################################################
-def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Check, iflag, iTY_Char):
-    global sketch_Helix
-    global sketch_Profile
-    global P100, P101, P102, P103, P104, P105
+    # global CoilType         # Type of Coil to Draw
+# 1 Revolution and Height (also has optional angle)
+# 2 Revolution and Pitch (also has optional angle)
+# 3 Height and Pitch (also has optional angle)
+# 4 Spiral
+    # global Cdiameter        # Diameter of Coil
+    # global Crevs            # Number of Coil Revolutions
+    # global Cheight          # Height of Coil
+    # global Cpitch           # Pitch of Coil
+    # global Cangle           # Coil Angle (0 = no angle)
+    # global CsplinePts       # Number of Spline points per revolution for Coil
+    # global GRC_Char         # Coil GuideRail Type LongHelix or Pattern (Not Used for Now)
+    #                         # Pattern will not work with Spiral or angle used with other coil types
+    # global Cdia_Sect        # Diameter of Circle or Polygon Profile for Coil
+    # global CpolySides       # Number of Sides for Polygon Profile
+    # global Crect_Wid        # Width of Rectangle Profile
+    # global Crect_Ht         # Height of Rectangle Profile
+    # global CStarOut_Rad     # Outside Radius of Star Profile
+    # global CStarIn_Rad      # Inside Radius of Star Profile
+    # global CStar_Num        # Number of Star Points
+    # global CSec_Type        # Profile Section type, 1 (Circle), 2 (Polygon), 3 (Ellipse), 4 (Rectangle) or 5 (Star)
+    # global Cposition        # 1st character is 1 (inside), 2 (On Center) or 3 (Outside)
+    # global CPosRect         # Rectangle Profile vertical position 1 = Top, 2 = Middle, 3 = Bottom
+def DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, CellipseY, Cposition, CPosRect, Crect_Wid, Crect_Ht, CStarOut_Rad, CStarIn_Rad, CStar_Num, Cpitch, Crevs, Cheight, sPts, GRC_Char, RL_thread, Cangle):
+    F_OD = float(Cdiameter)     # Starting Diameter of coil or spiral
+    F_Rad = F_OD / 2.0
+    F_Rad1 = F_Rad * .1
+    I_revs = int(Crevs)         # Number of revolutions if this option used
+    Ht = float(Cheight)         # Height of Coil if this option used
+    F_angle = float(Cangle)
+    F_ID = float(Cdia_Sect)
+    F_ID_Rad = F_ID / 2
+    F_ID_Rad1 = F_ID_Rad * .1
+    numSides = int(CpolySides)
+    I_num_points = int(CStar_Num)
+    F_pitch = float(Cpitch)
+    #ui.messageBox(f'CoilType = {CoilType}\n CellipseX = {CellipseX}\nCellipseY = {CellipseY}')
+# Create a new 3D sketch.
+    sketches = subComp1.sketches
+    sketch_Profile = sketches.add(subComp1.xZConstructionPlane)
+    sketch_Profile.name = "Coil_Profile"
+    F_Pos = F_Rad1
+    S_Type = 'Circle_'
+    if Cposition == '1':
+        F_Pos = F_Rad1 - F_ID_Rad1
+    elif Cposition == '3':
+        F_Pos = F_Rad1 + F_ID_Rad1
+# Profile Section type, 1 (Circle), 2 (Polygon), 3 (Ellipse), 4 (Rectangle) or 5 (Star)
+    if CSec_Type == '1':
+        DrawCircle(sketch_Profile, F_Pos, F_ID_Rad1)
+    if CSec_Type == '2':
+        S_Type = "Poly_" + CpolySides + "_Sides_"
+        DrawPolygon(sketch_Profile, F_Pos, numSides, F_ID_Rad1)
+    elif CSec_Type == '3':
+        S_Type = 'Ellipse_'
+        X_Dist1 = (float(CellipseX) / 2.0) * .1
+        Y_Dist1 = (float(CellipseY) / 2.0) * .1
+        DrawEllipse(sketch_Profile, F_Pos, X_Dist1, Y_Dist1)
+    elif CSec_Type == '4':
+        S_Type = "Rect_" + Crect_Wid + "mm_Wid_" + Crect_Ht + "mm_Ht_"
+        DrawRectangle(sketch_Profile, F_Rad1, Crect_Wid, Crect_Ht, Cposition, CPosRect)
+    elif CSec_Type == '5':
+        S_Type = "Star_"
+        F_OutRad = float(CStarOut_Rad) * .1
+        F_InRad = float(CStarIn_Rad) * .1
+        DrawStar(sketch_Profile, F_Pos, F_OutRad, F_InRad, I_num_points)
+    prof = sketch_Profile.profiles.item(0)
+# Get the profiles in the sketch
+    xyPlane = subComp1.xYConstructionPlane
+    sketch_Helix = sketches.add(xyPlane)
+    sketch_Helix.name = "Sketch_Helix"
+    R_Min = F_Rad - F_ID_Rad
+    if CoilType == '4':
+        subComp1.name = "Spiral_" + S_Type + Cdiameter
+        DrawSpiral(subComp1, sketch_Helix, R_Min, F_Rad, F_pitch, I_revs, sPts, RL_thread, prof)
+    else:
+        subComp1.name = "Coil_" + S_Type + Cdiameter
+        DrawAngledCoil(subComp1, sketch_Helix, F_Rad + F_ID_Rad, F_Rad, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType)
+    b_name = subComp1.name
+    bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
+    numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
+    if numBodies > 0:
+        target_body = bsubComp1_bodies.item(0)    # This should be the Nut just drawn
+        target_body.name = b_name
+##########################################################################
+# Revolution and Height (aldo has optional angle)
+# (Done) Revolution and Pitch (aldo has optional angle)
+# Height and Pitch (aldo has optional angle)
+# (Done) Spiral
+##########################################################################
+def DrawSpiral(subComp1, sketch_Helix, R_Min, Rad, pitch, revolutions, num_points_per_revolution, RL_thread, prof):
+    Rad1 = Rad * .1
+    pitch1 = pitch * .1
+    points = adsk.core.ObjectCollection.create()
+# Determine the direction of rotation
+    if RL_thread == 'L':
+        direction = -1
+    else:
+        direction = 1
+# Create an object collection for the points.
+    sketchSplines = sketch_Helix.sketchCurves.sketchFittedSplines
+# Calculate points for the spiral
+    for i in range(num_points_per_revolution * revolutions + 1):
+        t = direction * i / num_points_per_revolution * 2 * math.pi
+        r = Rad1 + (pitch1 * abs(t)) / (2 * math.pi)
+        x = r * math.cos(t)
+        y = r * math.sin(t)
+        z = 0
+        points.add(adsk.core.Point3D.create(x, y, z))
+# Create the spline
+    spline = sketchSplines.add(points)              # Create the inner spline helix from points 
+    path = subComp1.features.createPath(spline)
+# Create the sweep feature
+    sweeps = subComp1.features.sweepFeatures
+    sweep_input = sweeps.createInput(prof, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    sweeps.add(sweep_input)
+##########################################################################
+# 1 (done) Revolution and Height (also has optional angle)
+# 2 Revolution and Pitch (also has optional angle)
+# 3 (done) Height and Pitch (also has optional angle)
+# 4 (done) Spiral
+def DrawAngledCoil(subComp1, sketch_Helix, R_Max, F_Rad, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType):
+# Convert angle from degrees to radians
+    angle = math.radians(F_angle)
+# Convert diameter and pitch from mm to cm
+    rad0 = F_Rad * .1
+    rad1 = R_Max * .1
+    pitch = F_pitch * .1
+    Ht1 = Ht * .1
+    if CoilType == '1':
+        pitch = Ht1 / I_revs
+    elif CoilType == '2':
+        Ht1 = I_revs * pitch
+# Calculate the radius and total points
+    total_points = sPts * I_revs
+# Create an object collection for the points.
+    sketchSplines = sketch_Helix.sketchCurves.sketchFittedSplines
+# Calculate the points for the coil
+    points = adsk.core.ObjectCollection.create()
+    points1 = adsk.core.ObjectCollection.create()
+    for i in range(total_points + 1):
+        t = i / sPts * 2 * math.pi  # angle in radians
+        r = rad0 + (pitch * i / sPts) * math.tan(angle)
+        r1 = rad1 + (pitch * i / sPts) * math.tan(angle)
+        x = r * math.cos(t)
+        y = r * math.sin(t)
+        x1 = r1 * math.cos(t)
+        y1 = r1 * math.sin(t)
+        z = (pitch / (2 * math.pi)) * t  # linear z increase with t
+        points.add(adsk.core.Point3D.create(x, y, z))       # for Path
+        points1.add(adsk.core.Point3D.create(x1, y1, z))    # for GuideRail
+# Create the spline
+    spline = sketchSplines.add(points)              # Create the inner spline helix from points
+    spline1 = sketchSplines.add(points1)
+    guide = subComp1.features.createPath(spline1)
+    path = subComp1.features.createPath(spline)
+# Create the sweep feature
+    sweeps = subComp1.features.sweepFeatures
+    sweep_input = sweeps.createInput(prof, path, adsk.fusion.FeatureOperations.NewBodyFeatureOperation)
+    sweep_input.guideRail = guide            # Default guide rail is the outer Helix
+    sweep_input.profileScaling = adsk.fusion.SweepProfileScalingOptions.SweepProfileScaleOption
+    sweeps.add(sweep_input)
+##########################################################################
+def DrawCircle(sketch_Profile, F_Pos, F_ID_Rad1):
+    center_point = adsk.core.Point3D.create(F_Pos, 0, 0)
+    sketch_Profile.sketchCurves.sketchCircles.addByCenterRadius(center_point, F_ID_Rad1)
+##########################################################################
+def DrawPolygon(sketch_Profile, F_Pos, numSides, radius):
+    centerX = F_Pos             # Center X coordinate of Polygon
+    centerY = 0
+# Draw the polygon
+    angle = 2 * math.pi / numSides
+    points = []
+    for i in range(numSides):
+        x = centerX + radius * math.cos(i * angle)
+        y = centerY + radius * math.sin(i * angle)
+        points.append(adsk.core.Point3D.create(x, y, 0)) # Center point is (x, y) on the XY plane, z is constant
+# Create the lines between the points
+    lines = sketch_Profile.sketchCurves.sketchLines
+    for i in range(numSides):
+        lines.addByTwoPoints(points[i], points[(i + 1) % numSides])
+##########################################################################
+def DrawEllipse(sketch_Profile, F_Pos, Major_X, Minor_Y):
+# Define the ellipse parameters.
+    centerPoint = adsk.core.Point3D.create(F_Pos, 0, 0)
+    X_AxisPoint = adsk.core.Point3D.create(F_Pos + Major_X / 2, 0, 0)
+    Y_AxisPoint = adsk.core.Point3D.create(F_Pos, Minor_Y / 2, 0)    
+# Create the ellipse.
+    ellipses = sketch_Profile.sketchCurves.sketchEllipses
+    ellipses.add(centerPoint, X_AxisPoint, Y_AxisPoint)
+##########################################################################
+def DrawRectangle(sketch_Profile, F_Rad1, Crect_Wid, Crect_Ht, Cposition, CPosRect):
+    F_Wid1 = float(Crect_Wid) * .1
+    F_Ht1 = float(Crect_Ht) * .1
+    F_Wid12 = F_Wid1 / 2.0
+    F_Ht12 = F_Ht1 / 2.0
+    F_Pos = F_Rad1
+    X0 = F_Pos - F_Wid1             # default 3 Horizontal position Outside edge
+    X1 = F_Pos
+    #ui.messageBox(f'F_Rad1 = {F_Rad1}\nCrect_Wid = {Crect_Wid}\nCrect_Ht = {Crect_Ht}')
+    if Cposition == '1':
+        X0 = F_Pos
+        X1 = F_Pos + F_Wid1
+    elif Cposition == '2':
+        X0 = F_Pos - F_Wid12
+        X1 = F_Pos + F_Wid12
+    Y0 = 0                          # default 3 vertical position Bottom
+    Y1 = -F_Ht1
+# 1 = Top, 2 = Middle 3, = Bottom
+    if CPosRect == '1':
+        Y0 = F_Ht1
+        Y1 = 0
+    elif CPosRect == '2':
+        Y0 = -F_Ht12
+        Y1 = F_Ht12
+    P1 = adsk.core.Point3D.create(X0, Y0, 0)
+    P2 = adsk.core.Point3D.create(X1, Y0, 0)
+    P3 = adsk.core.Point3D.create(X1, Y1, 0)
+    P4 = adsk.core.Point3D.create(X0, Y1, 0)
+    points = [P1, P2, P3, P4, P1]              # Create a list of points for single thread profile
+    draw_lines_between_points(sketch_Profile, points, 0)
+##########################################################################
+def DrawStar(sketch_Profile, F_Pos, outer_radius, inner_radius, num_points):
+    centerX = F_Pos             # Center X coordinate of Polygon
+    centerY = 0
+    points = []
+# Calculate the points of the star
+    points = []
+    angle = 2 * math.pi / (num_points * 2)
+    for i in range(num_points * 2):
+        radius = outer_radius if i % 2 == 0 else inner_radius
+        x = centerX + radius * math.cos(i * angle)
+        y = centerY + radius * math.sin(i * angle)
+        points.append(adsk.core.Point3D.create(x, y, 0))
+# Create the lines between the points
+    lines = sketch_Profile.sketchCurves.sketchLines
+    for i in range(num_points * 2):
+        lines.addByTwoPoints(points[i], points[(i + 1) % (num_points * 2)])
+##########################################################################
+def DrawThreads(subComp1, OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Check, iflag, iTY_Char):
     try:
         Ht1 = Ht * .1
         PitHlx1 = PitHlx * .1
         Rad = OD / 2.0
-        pts = calcPts(OD, Pitch, PitHlx1, iflag)
+        pts = calcPts(OD, Pitch, PitHlx1)
         P00 = pts[0]
         P1 = pts[1]
         P2 = pts[2]
@@ -589,7 +813,7 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
 # Create sketch for the profile to sweep
         sketch_Profile = sketches.add(subComp1.xZConstructionPlane)
         sketch_Profile.name = "Thread_Profile"
-        sketchLines = sketch_Profile.sketchCurves.sketchLines
+        sketch_Profile.sketchCurves.sketchLines
         rev = int(Ht / PitHlx) + 1                   # How many revolutions of helix
         if G_Rail== 'L' or G_Rail == 'P':
             points = [P00, P1, P2, P3, P4]              # Create a list of points for single thread profile
@@ -623,7 +847,7 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
         if i_Error == 1:
 # Get the profiles in the sketch
             profiles = sketch_Profile.profiles
-            num_profiles = profiles.count
+            #num_profiles = profiles.count
 # Initialize variables to track the largest profile and its area
             largest_profile = None
             largest_area = 0
@@ -636,40 +860,41 @@ def DrawThreads(OD, Pitch, PitHlx, Ht, sPts, G_Rail, RL_thread, iST_Char, RL_Che
                 if area > largest_area:
                     largest_area = area
                     largest_profile = prof
-        DrawHelix(Rad, PitHlx, Ht, Ht1, sPts, G_Rail, RL_thread, largest_profile, iflag)
+# The 0.0 is a filler, because we need the minimum radius sent from Coil routine, but not for threads
+        DrawHelix(subComp1,sketch_Helix, 0.0, Rad, PitHlx, Ht, Ht1, sPts, G_Rail, RL_thread, largest_profile, iflag)
 # Now for the possible Single Rectangular pattern to create threads
         if G_Rail == 'P':
-            DrawPatternThreads(PitHlx, rev)
-        DrawCylinder(R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char) # Only extrude the length of 1 helix revolution
+            DrawPatternThreads(subComp1, PitHlx, rev, 0)
+        DrawCylinder(subComp1, sketch_Helix, Rad, R_Min, Ht1, Pitch, PitHlx, iflag, iTY_Char) # Only extrude the length of 1 helix revolution
         if iST_Char > 1:
-            CopRot_Threads(iST_Char)
+            CopRot_Threads(subComp1, iST_Char)
     except Exception as e:
         ui.messageBox("Error: {}".format(traceback.format_exc()))
 # Originally did the pattern this way until realizing  the pattern along path would be simpler
-def Old_DrawPatternThreads(PitHlx, rev):
-    bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
-    numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used
-    targetBody = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawn
-# Create input entities for rectangular pattern
-    inputEntites = adsk.core.ObjectCollection.create()
-    inputEntites.add(targetBody)
-# Get x and y axes for rectangular pattern
-    xAxis = subComp1.xConstructionAxis
-    zAxis = subComp1.zConstructionAxis
-# Quantity and distance
-    quantityOne = adsk.core.ValueInput.createByString('1')      # quantity along X-Axis Not really used
-    distanceOne = adsk.core.ValueInput.createByString('1 cm')   # distance along X-Axis not really used
-    quantityTwo = adsk.core.ValueInput.createByString(str(rev))
-    distanceTwo = adsk.core.ValueInput.createByString(repr (PitHlx))
-# Create the input for rectangular pattern
-    rectangularPatterns = subComp1.features.rectangularPatternFeatures
-    rectangularPatternInput = rectangularPatterns.createInput(inputEntites, xAxis, quantityOne, distanceOne, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
-# Set the data for second direction
-    rectangularPatternInput.setDirectionTwo(zAxis, quantityTwo, distanceTwo)
-# Create the rectangular pattern
-    rectangularFeature = rectangularPatterns.add(rectangularPatternInput)
+# def Old_DrawPatternThreads(subComp1, PitHlx, rev):
+#     bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
+#     numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used
+#     targetBody = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawn
+# # Create input entities for rectangular pattern
+#     inputEntites = adsk.core.ObjectCollection.create()
+#     inputEntites.add(targetBody)
+# # Get x and y axes for rectangular pattern
+#     xAxis = subComp1.xConstructionAxis
+#     zAxis = subComp1.zConstructionAxis
+# # Quantity and distance
+#     quantityOne = adsk.core.ValueInput.createByString('1')      # quantity along X-Axis Not really used
+#     distanceOne = adsk.core.ValueInput.createByString('1 cm')   # distance along X-Axis not really used
+#     quantityTwo = adsk.core.ValueInput.createByString(str(rev))
+#     distanceTwo = adsk.core.ValueInput.createByString(repr (PitHlx))
+# # Create the input for rectangular pattern
+#     rectangularPatterns = subComp1.features.rectangularPatternFeatures
+#     rectangularPatternInput = rectangularPatterns.createInput(inputEntites, xAxis, quantityOne, distanceOne, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
+# # Set the data for second direction
+#     rectangularPatternInput.setDirectionTwo(zAxis, quantityTwo, distanceTwo)
+# # Create the rectangular pattern
+#     rectangularPatterns.add(rectangularPatternInput)
 ###################################################################################################
-def DrawPatternThreads(PitHlx, rev):
+def DrawPatternThreads(subComp1, PitHlx, rev, iflag):
     PitHlx2 = PitHlx * .1
     bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
     numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used
@@ -685,7 +910,20 @@ def DrawPatternThreads(PitHlx, rev):
     pathPatterns = subComp1.features.pathPatternFeatures
     pathPatternInput = pathPatterns.createInput(inputEntites, path, patternQuantity, patternDistance, adsk.fusion.PatternDistanceType.SpacingPatternDistanceType)
 # Create the path pattern
-    pathFeature = pathPatterns.add(pathPatternInput)
+    pathPatterns.add(pathPatternInput)
+# Combine them all together if this routine was called from Coil Routine
+    if iflag == 1:
+        panel_comb_fea = subComp1.features.combineFeatures
+        tool_bodies_oc = adsk.core.ObjectCollection.createWithArray(
+            [subComp1.bRepBodies[i] for i in range(1, subComp1.bRepBodies.count)]
+        )
+        comb_input: adsk.fusion.CombineFeatureInput = panel_comb_fea.createInput(
+            subComp1.bRepBodies[0],
+            tool_bodies_oc
+        )
+        comb_input.isKeepToolBodies = False
+        comb_input.operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
+        panel_comb_fea.add(comb_input)
     preferences.unitAndValuePreferences.generalPrecision = General_Precision        # Set precision back to what user had
 ###################################################################################################
 # find intersection point of Line P01, P02 and P03, P04
@@ -701,8 +939,8 @@ def findIntersection(P01, P02, P03, P04):
     px= ( (x1*y2-y1*x2)*(x3-x4)-(x1-x2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) ) 
     py= ( (x1*y2-y1*x2)*(y3-y4)-(y1-y2)*(x3*y4-y3*x4) ) / ( (x1-x2)*(y3-y4)-(y1-y2)*(x3-x4) )
     return(adsk.core.Point3D.create(px, py, 0))
+# Calculate the coefficients for the lines
 def calculate_intersection(P3, P4, P5, P22):
-    # Calculate the coefficients for the lines
     A1 = abs(P4.y) - abs(P3.y)
     B1 = P3.x - P4.x
     C1 = (A1 * P3.x) + (B1 * abs(P3.y))
@@ -717,7 +955,7 @@ def calculate_intersection(P3, P4, P5, P22):
     x = (B2 * C1 - B1 * C2) / det
     y = (A1 * C2 - A2 * C1) / det
     return(adsk.core.Point3D.create(x, y, 0))
-def CopRot_Threads(iST_Char):
+def CopRot_Threads(subComp1, iST_Char):
     rot_Array = [180, 90]
     icount = 1                  # one time thru loop if iST_Char = 2
     if iST_Char == 4:
@@ -750,11 +988,11 @@ def CopRot_Threads(iST_Char):
         combineInput.operation = adsk.fusion.FeatureOperations.JoinFeatureOperation
         combineFeats.add(combineInput)
         i = i + 1
-def subtract_bodies():
+def subtract_bodies(subComp1):
     try:
         bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
         numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
-        target_body = bsubComp1_bodies.item(numBodies-1)    # This shoulde be the Nut just drawn
+        target_body = bsubComp1_bodies.item(numBodies-1)    # This should be the Nut just drawn
         target_body.name = BodyNut_Name
         tool_body = bsubComp1_bodies.item(numBodies-2)        # This should be the threads to cut out
 # Create a combine input
@@ -765,7 +1003,7 @@ def subtract_bodies():
         input.isNewComponent = False
         input.isKeepToolBodies = False
         input.operation = adsk.fusion.FeatureOperations.CutFeatureOperation
-        combineFeature = combineFeatures.add(input)
+        combineFeatures.add(input)
     except:
         if ui:
             ui.messageBox('Failed:\n{}'.format(traceback.format_exc()))
@@ -794,9 +1032,9 @@ def read_variables_from_text_file(Fname):
     return variables
 # Executed when add-in is run.
 def start():
-    # Create a command Definition.
+# Create a command Definition.
     cmd_def = ui.commandDefinitions.addButtonDefinition(CMD_ID, CMD_NAME, CMD_Description, ICON_FOLDER)
-    # Define an event handler for the command created event. It will be called when the button is clicked.
+# Define an event handler for the command created event. It will be called when the button is clicked.
     futil.add_handler(cmd_def.commandCreated, command_created)
 # Get the target workspace the button will be created in.
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
@@ -808,7 +1046,7 @@ def start():
     control.isPromoted = IS_PROMOTED
 # Executed when add-in is stopped.
 def stop():
-    # Get the various UI elements for this command
+# Get the various UI elements for this command
     workspace = ui.workspaces.itemById(WORKSPACE_ID)
     panel = workspace.toolbarPanels.itemById(PANEL_ID)
     command_control = panel.controls.itemById(CMD_ID)
@@ -836,51 +1074,26 @@ def is_valid_int(s):
 # This defines the contents of the command dialog and connects to the command related events.
 ### $$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$ ###
 def command_created(args: adsk.core.CommandCreatedEventArgs):
-    # General logging for debug.
+# General logging for debug.
     futil.log(f'{CMD_NAME} Command Created Event')
     global Fname
     global EFname
+    global CFname
     global csvData
-    global diameter
-    global height
-    global pitch
     global pitHelix
-    global angleTop
-    global angleBot
-    global splinePts
-    global GR_Char
-    global RL_Char
-    global ST_Char
-    global TY_Char
-    global TYE_Char
-    global TYM_Char
-    global Cham_Wid
     global Thread_Wid
     global Thread_Ht
-    global Cham_EWid
     global Thread_EWid
     global Thread_EHt
-    
-    global Ediameter
-    global Epitch
-    global EpitHelix
-    global Eheight
     global _Ediameter
     global _Epitch
     global _EpitHelix
 
-    global Bolt_Sides
-    global BoltFlat_Dia 
-    global BoltHd_Ht
-    global Nut_Sides
-    global NutFlat_Dia
-    global NutHd_Ht
-    global MF_Gap
-
     global dropdownInputEM
-    global dropDownCommand_MInput
-    global dropDownCommand_EInput
+    global dropdownCommand_MInput
+    global dropdownCommand_EInput
     global dropdownInput3
+    global dropdownInput6
     global Metdata
     global Engdata
     global _diameter
@@ -899,21 +1112,46 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     global _Cham_EWid
     global _Thread_EWid
     global _Thread_EHt
-    global group_Minput
-    global group_Einput
     global group_M2input
     global group_E2input
-    global ME_Units
 
     global _BoltFlat_EDia
     global _BoltHd_EHt
     global _NutFlat_EDia
     global _NutHd_EHt
-    global BoltFlat_EDia
-    global BoltHd_EHt
-    global NutFlat_EDia
-    global NutHd_EHt
-    # https://help.autodesk.com/view/fusion360/ENU/?contextId=CommandInputs
+
+    #global CoilType         # Type of Coil to Draw
+    #global Cdiameter        # Diameter of Coil
+    #global Crevs            # Number of Coil Revolutions
+    #global Cheight          # Height of Coil
+    #global Cpitch           # Pitch of Coil
+    #global Cangle           # Coil Angle (0 = no angle)
+    #global CsplinePts       # Number of Spline points per revolution for Coil
+    global GR_Char
+    global GRC_Char         # Coil GuideRail Type LongHelix or Pattern
+                            # Pattern will not work with Spiral or angle used with other coil types
+    global Cdia_Sect        # Diameter of Circle or Polygon Profile for Coil
+    #global CpolySides       # Number of Sides for Polygon Profile
+    #global CellipseX        # Ellipse X Diameter
+    #global CellipseY        # Ellipse Y Diameter (actually the along Z-axis if looking in 3D)
+    #global Crect_Wid        # Width of Rectangle Profile
+    #global Crect_Ht         # Height of Rectangle Profile
+    #global CStarOut_Rad     # Outside Radius of Star Profile
+    #global CStarIn_Rad      # Inside Radius of Star Profile
+    #global CStar_Num        # Number of Star Points
+    #global CSec_Type         # Profile Section type, 1 (Circle), 2 (Polygon), 3 (Rectangle) or 4 (Star)
+    #global Cposition        # 1st character is 1 (inside), 2 (On Center) or 3 (Outside)
+    #global CPosRect         # Rectangle Profile vertical position 1 = Top, 2 = Middle, 3 = Bottom
+    #global _Cdia_Sect
+    #global _Crect_Wid
+    #global _Crect_Ht
+    global group_T3_1_input
+    global group_T3_2_input
+    global group_T3_3_input
+    #global _CStarOut_Rad
+    #global _CStarIn_Rad
+    #global _CStar_Num
+# https://help.autodesk.com/view/fusion360/ENU/?contextId=CommandInputs
     current_folder = get_current_folder()           #Get the folder this program is located in
 
     unitsMgr = app.activeProduct.unitsManager
@@ -931,8 +1169,12 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # Create tab input 2
     tabCmdInput2 = inputs.addTabCommandInput('_BoltNut', 'Bolts and Nuts')
     tab2ChildInputs = tabCmdInput2.children
+# Create tab input 3
+    tabCmdInput3 = inputs.addTabCommandInput('_Coils', 'Coil Options')
+    tab3ChildInputs = tabCmdInput3.children
     Fname = current_folder + '\\' + 'DialogInput_V9.txt'     # This is the Default Input file from previous entries
     EFname = current_folder + '\\' + 'EDialogInput_V9.txt'   # This is the Default Input file from previous entries
+    CFname = current_folder + '\\' + 'Coil_DialogInput_V9.txt'
     if file_exists(Fname):
         DialogName = open(Fname, 'r')
 # Read variables from the text file if it exists
@@ -947,7 +1189,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             angleTop = csvData[4]
             angleBot = csvData[5]
             splinePts = csvData[6]
-            GR_Char = csvData[7]
+            GRM_Char = csvData[7]
             RL_Char = csvData[8]
             ST_Char = csvData[9]
             TYM_Char = csvData[10]
@@ -974,7 +1216,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         angleTop = '30'
         angleBot = '30'
         splinePts = '18'
-        GR_Char = 'P'
+        GRM_Char = 'P'
         RL_Char = 'R'
         ST_Char = '1'
         TYM_Char = '5'
@@ -1006,7 +1248,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             angleTop = csvData[4]
             angleBot = csvData[5]
             splinePts = csvData[6]
-            GR_Char = csvData[7]
+            GRE_Char = csvData[7]
             RL_Char = csvData[8]
             ST_Char = csvData[9]
             TYE_Char = csvData[10]
@@ -1035,7 +1277,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         angleTop = '30'
         angleBot = '30'
         splinePts = '18'
-        GR_Char = 'P'
+        GRE_Char = 'P'
         RL_Char = 'R'
         ST_Char = '1'
         TYE_Char = '5'
@@ -1053,137 +1295,179 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         Cham_EWid = '0.0406'
         Thread_EWid = '0.0271'
         Thread_EHt = '0.0375'
+    if file_exists(CFname):
+        csvData = None
+        DialogName = open(CFname, 'r')
+# Read variables from the text file if it exists
+        with DialogName as f:
+            reader = list(csv.reader(f))
+        DialogName.close        
+        for csvData in reader:
+            CoilType = csvData[0]
+            Cdiameter = csvData[1]
+            Crevs = csvData[2]
+            Cheight = csvData[3]
+            Cpitch = csvData[4]
+            Cangle = csvData[5]
+            CsplinePts = csvData[6]
+            GRC_Char = csvData[7]
+            CSec_Type = csvData[8]
+            Cposition = csvData[9]
+            Cdia_Sect = csvData[10]
+            CpolySides = csvData[11]
+            CellipseX = csvData[12]
+            CellipseY = csvData[13]
+            Crect_Wid = csvData[14]
+            Crect_Ht = csvData[15]
+            CPosRect = csvData[16]
+            CStarOut_Rad = csvData[17]
+            CStarIn_Rad = csvData[18]
+            CStar_Num = csvData[19]
+    else:
+        CoilType = '2'
+        Cdiameter = '24.0'
+        Crevs = '3'
+        Cheight = height
+        Cpitch = pitHelix
+        Cangle = '0'
+        CsplinePts = splinePts
+        GRC_Char = 'L'
+        CSec_Type = '1'
+        Cposition = '2'
+        Cdia_Sect = '2.0'
+        CpolySides = '6'
+        CellipseX = '1.0'
+        CellipseY = '2.0'
+        Crect_Wid = '3'
+        Crect_Ht = '6'
+        CPosRect = '2'
+        CStarOut_Rad = '5'
+        CStarIn_Rad = '2.5'
+        CStar_Num = '6'
     in_err = 0
-    if is_valid_float(diameter) == False:
+    if not is_valid_float(diameter):
         diameter = '6'
         in_err = 100
-    if is_valid_float(pitch) == False:
+    if not is_valid_float(pitch):
         pitch = '1'
         in_err = 101
-    if is_valid_float(pitHelix) == False:
+    if not is_valid_float(pitHelix):
         pitHelix = '1'
         in_err = 102
-    if is_valid_float(height) == False:
+    if not is_valid_float(height):
         height = '5'
         in_err = 103
-    if is_valid_float(angleTop) == False:
+    if not is_valid_float(angleTop):
         angleTop = '30'
         in_err = 104
-    if is_valid_float(angleBot) == False:
+    if not is_valid_float(angleBot):
         angleBot = '30'
         in_err = 105
-    if is_valid_int(splinePts) == False:
+    if not is_valid_int(splinePts):
         splinePts = '18'
         in_err = 106
-    if GR_Char != 'H' and GR_Char != 'P' and GR_Char != 'L':
-        GR_Char = 'P'
+    if GRM_Char != 'H' and GRM_Char != 'P' and GRM_Char != 'L':
+        GRM_Char = 'P'
         in_err = 107
+    if GRE_Char != 'H' and GRE_Char != 'P' and GRE_Char != 'L':
+        GRE_Char = 'P'
+        in_err = 108
     if RL_Char != 'R' and RL_Char != 'L':
         RL_Char = 'R'
-        in_err = 108
+        in_err = 109
     if ST_Char != '1' and ST_Char != '2' and ST_Char != '4':
         ST_Char = '1'
-        in_err = 109
+        in_err = 110
     if CT_Check != 'Y' and CT_Check != 'N':
         CT_Check = 'Y'
-        in_err = 110
+        in_err = 111
     if CN_Check != 'Y' and CN_Check != 'N':
         CN_Check = 'Y'
-        in_err = 111
+        in_err = 112
     if RL_Check != 'Y' and RL_Check != 'N':
         RL_Check = 'Y'
-        in_err = 112
-    if is_valid_int(TYM_Char) == False:
+        in_err = 113
+    if not is_valid_int(TYM_Char):
         TYM_Char = '5'
-        in_err = 113
+        in_err = 114
     else:
-        if int(TYM_Char) > 5 or int(TYM_Char) < 1:
+        if int(TYM_Char) > 6 or int(TYM_Char) < 1:
             TYM_Char = '5'
-            in_err = 114
-    if is_valid_int(TYE_Char) == False:
+            in_err = 115
+    if not is_valid_int(TYE_Char):
         TYE_Char = '5'
-        in_err = 113
-    else:
-        if int(TYE_Char) > 5 or int(TYE_Char) < 1:
-            TYE_Char = '5'
-            in_err = 114
-    if is_valid_int(Bolt_Sides) == False:
-        Bolt_Sides = '6'
-        in_err = 115
-    if is_valid_float(BoltFlat_Dia) == False:
-        BoltFlat_Dia = '10'
         in_err = 116
-    if is_valid_float(BoltHd_Ht) == False:
-        BoltHd_Ht = '4'
-        in_err = 117
-    if is_valid_int(Nut_Sides) == False:
-        Nut_Sides = '6'
+    else:
+        if int(TYE_Char) > 6 or int(TYE_Char) < 1:
+            TYE_Char = '5'
+            in_err = 117
+    if not is_valid_int(Bolt_Sides):
+        Bolt_Sides = '6'
         in_err = 118
-    if is_valid_float(NutFlat_Dia) == False:
-        NutFlat_Dia = '10'
+    if not is_valid_float(BoltFlat_Dia):
+        BoltFlat_Dia = '10'
         in_err = 119
-    if is_valid_float(NutHd_Ht) == False:
-        NutHd_Ht = '5'
+    if not is_valid_float(BoltHd_Ht):
+        BoltHd_Ht = '4'
         in_err = 120
-    if is_valid_float(MF_Gap) == False:
-        MF_Gap = '.3'
+    if not is_valid_int(Nut_Sides):
+        Nut_Sides = '6'
         in_err = 121
-    if is_valid_float(Cham_Wid) == False:
-        Cham_Wid = '1.015'
+    if not is_valid_float(NutFlat_Dia):
+        NutFlat_Dia = '10'
         in_err = 122
-    if is_valid_float(Thread_Wid) == False:
-        Thread_Wid = '0.6766'
+    if not is_valid_float(NutHd_Ht):
+        NutHd_Ht = '5'
         in_err = 123
-    if is_valid_float(Thread_Ht) == False:
-        Thread_Ht = '0.9375'
+    if not is_valid_float(MF_Gap):
+        MF_Gap = '.3'
         in_err = 124
+    if not is_valid_float(Cham_Wid):
+        Cham_Wid = '1.015'
+        in_err = 125
+    if not is_valid_float(Thread_Wid):
+        Thread_Wid = '0.6766'
+        in_err = 126
+    if not is_valid_float(Thread_Ht):
+        Thread_Ht = '0.9375'
+        in_err = 127
+    if ME_Units == 'M':
+        TY_Char = TYM_Char
+        GR_Char = GRM_Char
+    else:
+        TY_Char = TYE_Char
+        GR_Char = GRE_Char
 # If there was an error in the input data, write out the default values for that data
-    if in_err > 0:                   
+    if in_err > 0:
         BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
         OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TYM_Char + ',' + BoltNut
         with open(Fname, 'w') as csvfile:
             csvfile.write(OutString)
         csvfile.close
-    if ME_Units == 'M':
-        TY_Char = TYM_Char
-    else:
-        TY_Char = TYE_Char
 # Create a dropdown command input
-    dropDown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle)
-    dropdown0Items = dropDown0CommandInput.listItems
+    dropdown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown0Items = dropdown0CommandInput.listItems
+    dropdown0Items.add('1 - Single Thread Only', False, '')
+    dropdown0Items.add('2 - Bolt Thread', False, '')
+    dropdown0Items.add('3 - Threads M/F', False, '')
+    dropdown0Items.add('4 - Nut Thread', False, '')
+    dropdown0Items.add('5 - Bolt & Nut Threads', False, '')
+    dropdown0Items.add('6 - Coils', False, '')
     if TY_Char == '1':
-        dropdown0Items.add('1 - Single Thread Only', True, '')
-        dropdown0Items.add('2 - Bolt Thread', False, '')
-        dropdown0Items.add('3 - Threads M/F', False, '')
-        dropdown0Items.add('4 - Nut Thread', False, '')
-        dropdown0Items.add('5 - Bolt & Nut Threads', False, '')
-    elif TY_Char == '2':
-        dropdown0Items.add('1 - Single Thread Only', False, '')
-        dropdown0Items.add('2 - Bolt Thread', True, '')
-        dropdown0Items.add('3 - Threads M/F', False, '')
-        dropdown0Items.add('4 - Nut Thread', False, '')
-        dropdown0Items.add('5 - Bolt & Nut Threads', False, '')
+        dropdown0Items[0].isSelected = True
+    if TY_Char == '2':
+        dropdown0Items[1].isSelected = True
     elif TY_Char == '3':
-        dropdown0Items.add('1 - Single Thread Only', False, '')
-        dropdown0Items.add('2 - Bolt Thread', False, '')
-        dropdown0Items.add('3 - Threads M/F', True, '')
-        dropdown0Items.add('4 - Nut Thread', False, '')
-        dropdown0Items.add('5 - Bolt & Nut Threads', False, '')
+        dropdown0Items[2].isSelected = True
     elif TY_Char == '4':
-        dropdown0Items.add('1 - Single Thread Only', False, '')
-        dropdown0Items.add('2 - Bolt Thread', False, '')
-        dropdown0Items.add('3 - Threads M/F', False, '')
-        dropdown0Items.add('4 - Nut Thread', True, '')
-        dropdown0Items.add('5 - Bolt & Nut Threads', False, '')
+        dropdown0Items[3].isSelected = True
     elif TY_Char == '5':
-        dropdown0Items.add('1 - Single Thread Only', False, '')
-        dropdown0Items.add('2 - Bolt Thread', False, '')
-        dropdown0Items.add('3 - Threads M/F', False, '')
-        dropdown0Items.add('4 - Nut Thread', False, '')
-        dropdown0Items.add('5 - Bolt & Nut Threads', True, '')
+        dropdown0Items[4].isSelected = True
+    elif TY_Char == '6':
+        dropdown0Items[5].isSelected = True
     dropdownInputEM = tab1ChildInputs.addDropDownCommandInput('EnglishMetric', 'English or Metric', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdownEMItems = dropdownInputEM.listItems
-# Test what was used for the Thread direction on previous run dropDownCommand_MInput
+# Test what was used for the Thread direction on previous run dropdownCommand_MInput
     if ME_Units == 'E':
         dropdownEMItems.add('English', True, '')
         dropdownEMItems.add('Metric', False, '')
@@ -1194,7 +1478,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     group_Minput = tab1ChildInputs.addGroupCommandInput('group_Minput', 'Metric Section')
     group_Minput.isExpanded = False
     childM = group_Minput.children
-    dropDownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
     MFname = current_folder + '\\' + 'metric_V3.csv'        #Standard Metric sizes from M3 - M30
     if file_exists(MFname):
 # Read the Metric Sizes file
@@ -1203,7 +1487,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         file.close()
         outstr = ""
         j = len(Metdata)
-        dropdownMItems = dropDownCommand_MInput.listItems
+        dropdownMItems = dropdownCommand_MInput.listItems
         for i in range(1,j):
             outstr= Metdata[i][0] + Metdata[i][1]+ "x" + Metdata[i][2]
             dropdownMItems.add(outstr, False, '')                       #Add this Metric size to the Dropdownlist
@@ -1219,7 +1503,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     group_Einput = tab1ChildInputs.addGroupCommandInput('group_Einput', 'English Section')
     group_Einput.isExpanded = False
     childE = group_Einput.children
-    dropDownCommand_EInput = childE.addDropDownCommandInput('EngType', 'English Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdownCommand_EInput = childE.addDropDownCommandInput('EngType', 'English Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
     EngFname = current_folder + '\\' + 'English_V3.csv'        # Standard English sizes from #6 - 2"
     if file_exists(EngFname):
 # Read the English Sizes file
@@ -1228,7 +1512,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         file.close()
         outstr = ""
         j = len(Engdata)
-        dropdownEItems = dropDownCommand_EInput.listItems
+        dropdownEItems = dropdownCommand_EInput.listItems
         for i in range(1,j):
             outstr= Engdata[i][0] + Engdata[i][1]+ "x" + Engdata[i][2]
             dropdownEItems.add(outstr, False, '')                       #Add this Metric size to the Dropdownlist
@@ -1275,26 +1559,15 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # C = Center line Guide Rail                                We are disabling this for now, since it does not work well
 # L = Long Helix complete length & Single thread profile
 # P = Pattern of Single Helix & Single Thread copied for longer threads
-    if GR_Char == 'H' or GR_Char == 'C':
-        dropdown1Items.add('Helix', True, '')
-        dropdown1Items.add('Pattern', False, '')
-        #dropdown1Items.add('CenterLine', False, '')
-        dropdown1Items.add('LongHelix', False, '')
+    dropdown1Items.add('Helix', False, '')
+    dropdown1Items.add('Pattern', False, '')
+    dropdown1Items.add('LongHelix', False, '')
+    if GR_Char == 'C' or GR_Char == 'H':
+        dropdown1Items[0].isSelected = True
     elif GR_Char == 'P':
-        dropdown1Items.add('Helix', False, '')
-        dropdown1Items.add('Pattern', True, '')
-        #dropdown1Items.add('CenterLine', False, '')
-        dropdown1Items.add('LongHelix', False, '')
-    #elif GR_Char == 'C':
-    #    dropdown1Items.add('Helix', False, '')
-    #    dropdown1Items.add('Pattern', False, '')
-    #    dropdown1Items.add('CenterLine', True, '')
-    #    dropdown1Items.add('LongHelix', False, '')
-    else:
-        dropdown1Items.add('Helix', False, '')
-        dropdown1Items.add('Pattern', False, '')
-        #dropdown1Items.add('CenterLine', False, '')
-        dropdown1Items.add('LongHelix', True, '')
+        dropdown1Items[1].isSelected = True
+    elif GR_Char == 'L':
+        dropdown1Items[2].isSelected = True
     dropdownInput2 = tab1ChildInputs.addDropDownCommandInput('RightLeft', 'Right or Left Threads', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown2Items = dropdownInput2.listItems
 # Test what was used for the Thread direction on previous run
@@ -1306,18 +1579,15 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         dropdown2Items.add('Left', True, '')
     dropdownInput3 = tab1ChildInputs.addDropDownCommandInput('Starts', 'Number of Thread Starts', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown3Items = dropdownInput3.listItems
+    dropdown3Items.add('1 Start', False, '')
+    dropdown3Items.add('2 Start', False, '')
+    dropdown3Items.add('4 Start', False, '')
     if ST_Char == '1':
-        dropdown3Items.add('1 Start', True, '')
-        dropdown3Items.add('2 Start', False, '')
-        dropdown3Items.add('4 Start', False, '')
+        dropdown3Items[0].isSelected = True
     elif ST_Char == '2':
-        dropdown3Items.add('1 Start', False, '')
-        dropdown3Items.add('2 Start', True, '')
-        dropdown3Items.add('4 Start', False, '')
+        dropdown3Items[1].isSelected = True
     else:
-        dropdown3Items.add('1 Start', False, '')
-        dropdown3Items.add('2 Start', False, '')
-        dropdown3Items.add('4 Start', True, '')
+        dropdown3Items[2].isSelected = True
     if CT_Check == 'Y':
         tab1ChildInputs.addBoolValueInput('_ChamThread', 'Chamfer Top of Thread', True, '', True)
     else:
@@ -1331,6 +1601,114 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         tab1ChildInputs.addBoolValueInput('_RealOffset', 'Use Real Offset of Threads', True, '', True)
     else:
         tab1ChildInputs.addBoolValueInput('_RealOffset', 'Use Real Offset of Threads', True, '', False)
+##### Tab3 ################################################################################################
+# 1 Revolution and Height (aldo has optional angle)
+# 2 Revolution and Pitch (aldo has optional angle)
+# 3 Height and Pitch (aldo has optional angle)
+# 4 Spiral
+    dropdownInput4 = tab3ChildInputs.addDropDownCommandInput('CoilType', 'Coil Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown4Items = dropdownInput4.listItems
+    dropdown4Items.add('1 Revolution and Height', False, '')
+    dropdown4Items.add('2 Revolution and Pitch', False, '')
+    dropdown4Items.add('3 Height and Pitch', False, '')
+    dropdown4Items.add('4 Spiral', False, '')
+    if CoilType == '1':
+        dropdown4Items[0].isSelected = True
+    elif CoilType == '2':
+        dropdown4Items[1].isSelected = True
+    elif CoilType == '3':
+        dropdown4Items[2].isSelected = True
+    elif CoilType == '4':
+        dropdown4Items[3].isSelected = True
+    tab3ChildInputs.addTextBoxCommandInput('Cdiameter','Coil Diameter (mm): ',Cdiameter, 1, False )
+    tab3ChildInputs.addTextBoxCommandInput('Crevs','Coil Revolutions: ',Crevs, 1, False )
+    tab3ChildInputs.addTextBoxCommandInput('Cheight', 'Coil Height (mm): ', Cheight, 1, False)
+    tab3ChildInputs.addTextBoxCommandInput('Cpitch', 'Coil Pitch (mm): ', Cpitch, 1, False)
+    tab3ChildInputs.addTextBoxCommandInput('Cangle', 'Coil Angle: ', Cangle, 1, False)
+    tab3ChildInputs.addTextBoxCommandInput('CsplinePts', 'Coil Helix Spline Points: ', CsplinePts, 1, False)
+    GR_Char = 'L'
+# disabled for now, since for a lot of cases we have to use LongHelix
+    # dropdownInput5 = tab3ChildInputs.addDropDownCommandInput('C_GuideRail', 'Pattern or Long Helix Coil Guide:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    # dropdown5Items = dropdownInput5.listItems
+    # dropdown5Items.add('Pattern', False, '')
+    # dropdown5Items.add('LongHelix', False, '')
+    # if GRC_Char == 'P':
+    #     dropdown5Items[0].isSelected = True
+    # elif GRC_Char == 'L':
+    #     dropdown5Items[1].isSelected = True
+#dropdownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdownInput6 = tab3ChildInputs.addDropDownCommandInput('CSec_Type', 'Section Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown6Items = dropdownInput6.listItems
+    dropdown6Items.add('1 Circle', False, '')
+    dropdown6Items.add('2 Polygon', False, '')
+    dropdown6Items.add('3 Ellipse', False, '')
+    dropdown6Items.add('4 Rectangle', False, '')
+    dropdown6Items.add('5 Star', False, '')
+    if CSec_Type == '1':
+        dropdown6Items[0].isSelected = True
+    elif CSec_Type == '2':
+        dropdown6Items[1].isSelected = True
+    elif CSec_Type == '3':
+        dropdown6Items[2].isSelected = True
+    elif CSec_Type == '4':
+        dropdown6Items[3].isSelected = True
+    elif CSec_Type == '5':
+        dropdown6Items[4].isSelected = True
+    #ui.messageBox(f'Cposition = "{Cposition}"')
+    dropdownInput7 = tab3ChildInputs.addDropDownCommandInput('Cposition', 'Section Position:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown7Items = dropdownInput7.listItems
+    dropdown7Items.add('1 Inside', False, '')
+    dropdown7Items.add('2 On Center', False, '')
+    dropdown7Items.add('3 Outside', False, '')
+    if Cposition == '1':
+        dropdown7Items[0].isSelected = True
+    elif Cposition == '2':
+        dropdown7Items[1].isSelected = True
+    elif Cposition == '3':
+        dropdown7Items[2].isSelected = True
+# Circle & Polygon Group
+    group_T3_1_input = tab3ChildInputs.addGroupCommandInput('group_T3_1_input', 'Circle, Ellipse & Polygon Group')
+    group_T3_1_input.isExpanded = False
+    child_T3_1 = group_T3_1_input.children
+    child_T3_1.addTextBoxCommandInput('Cdia_Sect','Section Diameter (mm): ',Cdia_Sect, 1, False )
+    child_T3_1.addTextBoxCommandInput('CpolySides', '# of Sides of Polygon Section: ', CpolySides, 1, False)
+    child_T3_1.addTextBoxCommandInput('CellipseX', 'Diameter of Ellipse on X-Axis: ', CellipseX, 1, False)
+    child_T3_1.addTextBoxCommandInput('CellipseY', 'Diameter of Ellipse on Y-Axis: ', CellipseY, 1, False)
+# Rectangle Group
+    group_T3_2_input = tab3ChildInputs.addGroupCommandInput('group_T3_2_input', 'Rectangle Group')
+    group_T3_2_input.isExpanded = False
+    child_T3_2 = group_T3_2_input.children
+    child_T3_2.addTextBoxCommandInput('Crect_Wid','Rectangle Width: ',Crect_Wid, 1, False )
+    child_T3_2.addTextBoxCommandInput('Crect_Ht','Rectangle Height: ',Crect_Ht, 1, False )
+    
+    dropdownInput8 = child_T3_2.addDropDownCommandInput('CPosRect', 'Rectangle Position:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown8Items = dropdownInput8.listItems
+    dropdown8Items.add('1 Top', False, '')
+    dropdown8Items.add('2 Middle', False, '')
+    dropdown8Items.add('3 Bottom', False, '')
+    if CPosRect == '1':
+        dropdown8Items[0].isSelected = True
+    elif CPosRect == '2':
+        dropdown8Items[1].isSelected = True
+    elif CPosRect == '3':
+        dropdown8Items[2].isSelected = True
+#def draw_star(sketch, center, outer_radius, inner_radius, num_points):
+    group_T3_3_input = tab3ChildInputs.addGroupCommandInput('group_T3_3_input', 'Star Group')
+    group_T3_3_input.isExpanded = False
+    child_T3_3 = group_T3_3_input.children
+    child_T3_3.addTextBoxCommandInput('CStarOut_Rad','Outer Radius: ',CStarOut_Rad, 1, False )
+    child_T3_3.addTextBoxCommandInput('CStarIn_Rad','Inner Radius: ',CStarIn_Rad, 1, False )
+    child_T3_3.addTextBoxCommandInput('CStar_Num','Number of Star Points: ',CStar_Num, 1, False )
+    group_T3_1_input.isExpanded = False
+    group_T3_2_input.isExpanded = False
+    group_T3_3_input.isExpanded = False
+    I_Type = dropdownInput6.selectedItem.index
+    if I_Type < 3:
+        group_T3_1_input.isExpanded = True
+    elif I_Type == 3:
+        group_T3_2_input.isExpanded = True
+    elif I_Type == 4:
+        group_T3_3_input.isExpanded = True
     CalcThread(0)
 # Connect to event handlers
     futil.add_handler(args.command.execute, command_execute, local_handlers=local_handlers)
@@ -1343,7 +1721,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # is immediately called after the created event not command inputs were created for the dialog.
 ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! ###                                                                                                      
 def command_execute(args: adsk.core.CommandEventArgs):
-    # General logging for debug.
+# General logging for debug.
     futil.log(f'{CMD_NAME} Command Execute Event')
     global Body_Name
     global BodyNut_Name
@@ -1360,20 +1738,68 @@ def command_execute(args: adsk.core.CommandEventArgs):
     Bolt_Sides: adsk.core.TextBoxCommandInput = inputs.itemById('Bolt_Sides')
     Nut_Sides: adsk.core.TextBoxCommandInput = inputs.itemById('Nut_Sides')
     MF_Gap: adsk.core.TextBoxCommandInput = inputs.itemById('MF_Gap')                   # Making this mm for both English & Metric
-    dropDownInput1 = inputs.itemById('GuideRail')
-    GuideRail = dropDownInput1.selectedItem.name
-    dropDownInput2 = inputs.itemById('RightLeft')
-    RtLt = dropDownInput2.selectedItem.name
-    dropDownInput3 = inputs.itemById('Starts')
-    ST_Num = dropDownInput3.selectedItem.name
-    dropDownInput0 = inputs.itemById('WhatType')
-    TY_Char = dropDownInput0.selectedItem.name[0]           # 1st character of the string we test on
+    dropdownInput1 = inputs.itemById('GuideRail')
+    GuideRail = dropdownInput1.selectedItem.name
+    dropdownInput2 = inputs.itemById('RightLeft')
+    RtLt = dropdownInput2.selectedItem.name
+    dropdownInput3 = inputs.itemById('Starts')
+    ST_Num = dropdownInput3.selectedItem.name
+    dropdownInput0 = inputs.itemById('WhatType')
+    TY_Char = dropdownInput0.selectedItem.name[0]           # 1st character of the string we test on
     _ChamThread: adsk.core.BoolValueCommandInput = inputs.itemById('_ChamThread')
     _ChamNut: adsk.core.BoolValueCommandInput = inputs.itemById('_ChamNut')
     _RealOffset: adsk.core.BoolValueCommandInput = inputs.itemById('_RealOffset')
     CT_Check = 'N'
     CN_Check = 'N'
     RL_Check = 'N'
+########################################################################
+############################# Coil Section #############################
+########################################################################
+    Cdiameter: adsk.core.TextBoxCommandInput = inputs.itemById('Cdiameter')
+    Cpitch: adsk.core.TextBoxCommandInput = inputs.itemById('Cpitch')
+    Cheight: adsk.core.TextBoxCommandInput = inputs.itemById('Cheight')
+    CsplinePts: adsk.core.TextBoxCommandInput = inputs.itemById('CsplinePts')
+    Crevs: adsk.core.TextBoxCommandInput = inputs.itemById('Crevs')
+    Cangle: adsk.core.TextBoxCommandInput = inputs.itemById('Cangle')
+    Crevs = Crevs.text
+    Cangle = Cangle.text
+    Cdiameter = Cdiameter.text
+    Cpitch = Cpitch.text
+    Cheight = Cheight.text
+    CsplinePts = CsplinePts.text
+
+    dropdownInput4 = inputs.itemById('CoilType')
+    CoilType = dropdownInput4.selectedItem.name[0] 
+    #dropdownInput5 = inputs.itemById('C_GuideRail')
+    #GRC_Char = dropdownInput5.selectedItem.name[0]           # 1st character of the string we test on
+    dropdownInput6 = inputs.itemById('CSec_Type')
+    CSec_Type = dropdownInput6.selectedItem.name[0]
+    dropdownInput7 = inputs.itemById('Cposition')
+    Cposition = dropdownInput7.selectedItem.name[0]
+    
+# Circle & Polygon Group
+    Cdia_Sect: adsk.core.TextBoxCommandInput = inputs.itemById('Cdia_Sect')
+    CpolySides: adsk.core.TextBoxCommandInput = inputs.itemById('CpolySides')
+    Cdia_Sect = Cdia_Sect.text
+    CpolySides = CpolySides.text
+    CellipseX: adsk.core.TextBoxCommandInput = inputs.itemById('CellipseX')
+    CellipseY: adsk.core.TextBoxCommandInput = inputs.itemById('CellipseY')
+    CellipseX = CellipseX.text
+    CellipseY = CellipseY.text
+# Rectangle Group
+    Crect_Wid: adsk.core.TextBoxCommandInput = inputs.itemById('Crect_Wid')
+    Crect_Ht: adsk.core.TextBoxCommandInput = inputs.itemById('Crect_Ht')
+    Crect_Wid = Crect_Wid.text
+    Crect_Ht = Crect_Ht.text
+    dropdownInput8 = inputs.itemById('CPosRect')
+    CPosRect = dropdownInput8.selectedItem.name[0]          #1 = Top, 2 = Middle, 3 = Bottom
+# Star Group
+    CStarOut_Rad: adsk.core.TextBoxCommandInput = inputs.itemById('CStarOut_Rad')
+    CStarIn_Rad: adsk.core.TextBoxCommandInput = inputs.itemById('CStarIn_Rad')
+    CStar_Num: adsk.core.TextBoxCommandInput = inputs.itemById('CStar_Num')
+    CStarOut_Rad = CStarOut_Rad.text
+    CStarIn_Rad = CStarIn_Rad.text
+    CStar_Num = CStar_Num.text
     if _ChamThread.value:
         CT_Check = 'Y'
     if _ChamNut.value:
@@ -1463,7 +1889,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
 # so I have to duplicate the code to get it to work correctly.
     if ME_Units == 'M':
         BoltNut = Bolt_Sides + "," + BoltFlat_Dia + "," + BoltHd_Ht + "," + Nut_Sides + "," + NutFlat_Dia + "," + NutHd_Ht + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_Wid + "," + Thread_Wid + "," + Thread_Ht
-        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TYM_Char + ',' + BoltNut
+        OutString = diameter +',' + pitch +',' + pitHelix + ',' + height +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
         with open(Fname, 'w') as csvfile:
             csvfile.write(OutString)
         csvfile.close
@@ -1475,7 +1901,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
         F_Cham_Wid = float(Cham_Wid)
     else:
         BoltNut = Bolt_Sides + "," + BoltFlat_EDia + "," + BoltHd_EHt + "," + Nut_Sides + "," + NutFlat_EDia + "," + NutHd_EHt + "," + MF_Gap + "," + CT_Check + "," + CN_Check + "," + RL_Check + "," + Cham_EWid + "," + Thread_EWid + "," + Thread_EHt
-        OutString = Ediameter +',' + Epitch +',' + EpitHelix + ',' + Eheight +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TYE_Char + ',' + BoltNut
+        OutString = Ediameter +',' + Epitch +',' + EpitHelix + ',' + Eheight +',' + angleTop +',' + angleBot +',' + splinePts +',' + GR_Char +',' + RL_Char + ',' + ST_Char + ',' + TY_Char + ',' + BoltNut
         with open(EFname, 'w') as csvfile:
             csvfile.write(OutString)
         csvfile.close
@@ -1487,75 +1913,119 @@ def command_execute(args: adsk.core.CommandEventArgs):
         F_Cham_Wid = float(Cham_EWid) * 25.4
 # Create New Component for all this geometry to start with
     Tstart = design.timeline.markerPosition
-    CreateNewComponent()
 #TY_Char
 # 1 - Single Thread Only
 # 2 - Bolt Thread
 # 3 - Threads M/F
 # 4 - Nut Thread
 # 5 - Bolt & Nut Threads
+# 6 - Coils
     iTY_Char = int(TY_Char)
-    if iTY_Char != 4:
-        DrawThreads(OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 0, iTY_Char)
-        if CT_Check == 'Y':
-            ChamferTopThreads(F_Height, F_Cham_Wid)
-    if iTY_Char == 2 or iTY_Char == 5:
-        DrawBoltHead(float(BoltFlat_Dia),int(Bolt_Sides),float(BoltHd_Ht))
-    if iTY_Char > 2:
-        NH_Ht = float(NutHd_Ht)
-        Nt_Thread_Ht = NH_Ht + Pit + Pit
-        bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
-        iBodies = bsubComp1_bodies.count                    # Get a count of the bodies used, should be 3
-        if iBodies > 0:
-            hide_body(body1)                                # Hide the Bolt Threads
-        OD1 = (float(MF_Gap) * 2.0)  + OD                   # Used if not doing real offsets of threads
-        if ME_Units == 'M':
-            BodyNut_Name = "M" + diameter + "_" + MF_Gap + "_MF_Gap_Nut"
-        else:
-            BodyNut_Name = Ediameter + "_" + Epitch + "TPIx" + EpitHelix + "HTPIx" + "_" + MF_Gap + "mm_MF_Gap_Nut"
-        if RL_Check == 'Y':
-            if iTY_Char == 3:
-                DrawThreads(OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
+    if iTY_Char == 6:
+        OutString1 = Cposition + ',' + Cdia_Sect + ',' + CpolySides + ',' + CellipseX + ',' + CellipseY + ',' + Crect_Wid +',' + Crect_Ht + ',' + CPosRect + ',' +  CStarOut_Rad + ',' + CStarIn_Rad + ',' + CStar_Num
+        OutString = CoilType + ',' + Cdiameter +',' + Crevs + ',' + Cheight + ',' + Cpitch + ',' + Cangle + ',' + CsplinePts + ',' + GRC_Char + ',' + CSec_Type + ',' + OutString1
+        with open(CFname, 'w') as csvfile:
+            csvfile.write(OutString)
+        csvfile.close
+        Cspts = int(CsplinePts)
+        Coil_Name = "Coil_" + Cdiameter
+        subComp1 = CreateNewComponent(Coil_Name)
+        DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, CellipseY, Cposition, CPosRect, Crect_Wid, Crect_Ht, CStarOut_Rad, CStarIn_Rad, CStar_Num, Cpitch, Crevs, Cheight, Cspts, GRC_Char, RL_Char, Cangle)
+    else:
+        subComp1 = CreateNewComponent(Body_Name)
+        if iTY_Char != 4:
+            DrawThreads(subComp1, OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 0, iTY_Char)
+            if CT_Check == 'Y':
+                ChamferTopThreads(subComp1, OD / 2, F_Height, F_Cham_Wid)
+        if iTY_Char == 2 or iTY_Char == 5:
+            DrawBoltHead(subComp1, float(BoltFlat_Dia),int(Bolt_Sides),float(BoltHd_Ht))
+        if iTY_Char > 2:
+            NH_Ht = float(NutHd_Ht)
+            Nt_Thread_Ht = NH_Ht + Pit + Pit
+            Subbodies = GetBodies(subComp1)
+            if Subbodies:
+                hide_body(Subbodies)                                # Hide the Bolt Threads
+            OD1 = (float(MF_Gap) * 2.0)  + OD                   # Used if not doing real offsets of threads
+            if ME_Units == 'M':
+                BodyNut_Name = "M" + diameter + "_" + MF_Gap + "_MF_Gap_Nut"
             else:
-                DrawThreads(OD, Pit, PitHlx, Nt_Thread_Ht, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
-        else:
-            if iTY_Char == 3:
-                DrawThreads(OD1, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
+                BodyNut_Name = Ediameter + "_" + Epitch + "TPIx" + EpitHelix + "HTPIx" + "_" + MF_Gap + "mm_MF_Gap_Nut"
+            if RL_Check == 'Y':
+                if iTY_Char == 3:
+                    DrawThreads(subComp1, OD, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
+                else:
+                    DrawThreads(subComp1, OD, Pit, PitHlx, Nt_Thread_Ht, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
             else:
-                DrawThreads(OD1, Pit, PitHlx, Nt_Thread_Ht, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
-        if iTY_Char > 3:
-            DrawNut(float(NutFlat_Dia), int(Nut_Sides), float(NutHd_Ht),float(pitch))
-            subtract_bodies()               # Subtract the Threads from the Nut
-        if CN_Check == 'Y':
+                if iTY_Char == 3:
+                    DrawThreads(subComp1, OD1, Pit, PitHlx, F_Height, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
+                else:
+                    DrawThreads(subComp1, OD1, Pit, PitHlx, Nt_Thread_Ht, sPts, GR_Char, RL_Char, iST_Char, RL_Check, 1, iTY_Char)
             if iTY_Char > 3:
-                ChamferNut(Pit, NH_Ht, F_Cham_Wid, iTY_Char)
-            else:
-                ChamferNut(Pit, F_Height, F_Cham_Wid, iTY_Char)
-        if iBodies > 0:
-            unhide_body(body1)              # Unhide the Bolt Threads
-        bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
-        numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
-        NutThreads = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawn
-        NutThreads.name = BodyNut_Name                      # Rename the Nut or Nut Threads
+                DrawNut(subComp1, float(NutFlat_Dia), int(Nut_Sides), float(NutHd_Ht),float(pitch))
+                subtract_bodies(subComp1)               # Subtract the Threads from the Nut
+            if CN_Check == 'Y':
+                if iTY_Char > 3:
+                    ChamferNut(subComp1, OD1, Pit, PitHlx, NH_Ht, F_Cham_Wid, iTY_Char)
+                else:
+                    ChamferNut(subComp1, OD1, Pit, PitHlx, F_Height, F_Cham_Wid, iTY_Char)
+            if Subbodies:
+                unhide_body(Subbodies)              # Unhide the Bolt Threads
+            bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
+            numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
+            NutThreads = bsubComp1_bodies.item(numBodies-1)     # This should be the Nut just drawn
+            NutThreads.name = BodyNut_Name                      # Rename the Nut or Nut Threads
 # Group everything used to create the gear in the timeline.
     timelineGroups = design.timeline.timelineGroups
     TLend = design.timeline.markerPosition - 1
-    timelineGroup = timelineGroups.add(Tstart, TLend)
+    timelineGroups.add(Tstart, TLend)
     end = time.time()
     Elapsed = round(end - start,2)
     #msg = f'Elapsed Time: {Elapsed} seconds'
     #ui.messageBox(msg)
-def hide_body(body):
-    if body.isVisible:
-        body.isVisible = False
-def unhide_body(body):
-    if not body.isVisible:
-        body.isVisible = True
+def GetBodies(subComp1):
+# Create an empty collection to store bodies
+    bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
+    iBodies = bsubComp1_bodies.count
+    all_bodies = adsk.core.ObjectCollection.create()
+    if iBodies == 1:
+        first_body = bsubComp1_bodies.item(0)
+        all_bodies.add(first_body)
+        return all_bodies
+    elif iBodies > 1:
+# Get all occurrences in the subcomponent
+        occurrences = subComp1.occurrences
+        for occurrence in occurrences:
+# Get the component of the current occurrence
+            component = occurrence.component
+# Get all bodies in the component
+            bodies = component.bRepBodies
+            if bodies.count > 0:
+# Add all bodies to the collection
+                for body in bodies:
+                    all_bodies.add(body)
+        if all_bodies.count > 0:
+            return all_bodies
+        else:
+            return False
+    else:
+        return False
+def hide_body(Subbodies):
+    if Subbodies.count == 1:
+        Subbodies.item(0).isVisible = False
+    else:
+        for body in Subbodies:
+            body.isVisible = False
+def unhide_body(Subbodies):
+    if Subbodies.count == 1:
+        Subbodies.item(0).isVisible = True
+    else:
+        for body in Subbodies:
+            body.isVisible = True
 # This event handler is called when the command needs to compute a new preview in the graphics window.
 def command_preview(args: adsk.core.CommandEventArgs):
-    # General logging for debug.
+# General logging for debug.
     futil.log(f'{CMD_NAME} Command Preview Event')
-    inputs = args.command.commandInputs
+    #inputs = args.command.commandInputs
 # These are all the inputs that are currently checked when they change in the dialog box
 # MetTpe, diameter, pitch, angleTop, angleBot, Starts
 # WhatType, height, pitHelix, splinePts, GuideRail, RightLeft, Cham_Wid, _ChamThread, _ChamNut, _RealOffset
@@ -1568,8 +2038,25 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
     i_Calc = 0
     if a_ID == 'diameter' or a_ID == 'pitch' or a_ID == 'angleTop' or a_ID == 'angleBot' or a_ID =='Starts':
         i_Calc = 1
+    if a_ID == "CSec_Type":
+        #ui.messageBox('if a_ID == "CSec_Type":')
+        I_Type = dropdownInput6.selectedItem.index
+    # dropdown6Items.add('1 Circle', False, '')
+    # dropdown6Items.add('2 Polygon', False, '')
+    # dropdown6Items.add('3 Ellipse', False, '')
+    # dropdown6Items.add('4 Rectangle', False, '')
+    # dropdown6Items.add('5 Star', False, '')
+        group_T3_1_input.isExpanded = False
+        group_T3_2_input.isExpanded = False
+        group_T3_3_input.isExpanded = False
+        if I_Type < 3:
+            group_T3_1_input.isExpanded = True      # Expand Circle, Ellipse & Polygon Group
+        elif I_Type == 3:
+            group_T3_2_input.isExpanded = True      # Expand Rectangle Group
+        elif I_Type == 4:
+            group_T3_3_input.isExpanded = True      # Expand Star Group
     if a_ID == 'MetType':
-        Met_ID = dropDownCommand_MInput.selectedItem.index
+        Met_ID = dropdownCommand_MInput.selectedItem.index
         Met_ID = Met_ID + 1
 
         diameter = Metdata[Met_ID][1]
@@ -1597,7 +2084,7 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
         _Thread_Ht.text = Thread_Ht
         i_Calc = 2
     elif a_ID == "EngType":
-        Eng_ID = dropDownCommand_EInput.selectedItem.index
+        Eng_ID = dropdownCommand_EInput.selectedItem.index
         Eng_ID = Eng_ID + 1
 
         Ediameter = Engdata[Eng_ID][1]
@@ -1640,7 +2127,7 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
 # This event handler is called when the user interacts with any of the inputs in the dialog
 # which allows you to verify that all of the inputs are valid and enables the OK button.
 def command_validate_input(args: adsk.core.ValidateInputsEventArgs):
-    # General logging for debug.
+# General logging for debug.
     futil.log(f'{CMD_NAME} Validate Input Event')
     inputs = args.inputs
 # Verify the validity of the input values. This controls if the OK button is enabled or not.
@@ -1651,7 +2138,7 @@ def command_validate_input(args: adsk.core.ValidateInputsEventArgs):
         args.areInputsValid = False
 # This event handler is called when the command terminates.
 def command_destroy(args: adsk.core.CommandEventArgs):
-    # General logging for debug.
+# General logging for debug.
     futil.log(f'{CMD_NAME} Command Destroy Event')
     global local_handlers
     local_handlers = []

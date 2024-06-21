@@ -1,5 +1,5 @@
 # P_ThreadTune
-Fine-Tune your Screw Thread Designs in Autodesk Fusion 360
+Fine-Tune your Screw Thread Designs in Autodesk Fusion 360 and also Coils & Spirals (v2.0 and up)
 
 This was formally called **ThreadTune**, but I changed the name of it after finding another repository on github by the same name.
 
@@ -25,10 +25,8 @@ To run the program, click on Utilites, then ADD-INS, then Add-Ins tab.  You shou
 Click on the program & you should see a thread icon in the ADD-INS panel.  To run the program, just click on that thread icon.
 
 The most common use of this program for me anyway is to have a different diameter for the Male threads & the Female threads in order to get a good tolerance in 3D prints.  For example, using 6mm diameter threads with a pitch of 1 & angle of 30, then a 5.5mm diameter threads with same parameters you will get a tolerance of 0.25mm all the way around the vertical part of the threads, but a little less around the angled part of the threads.<br>
-![ThreadTune_v1_5_Tab1M](https://github.com/geodave810/P_ThreadTune/assets/13069472/d6cc5184-a5ed-4ee1-89dc-6520145227ff)
-![ThreadTune_v1_5_Tab1E](https://github.com/geodave810/P_ThreadTune/assets/13069472/583bcf6e-67ff-4c92-88e1-0cfb876c6b42)
-![ThreadTune_v1_5_Tab2M](https://github.com/geodave810/P_ThreadTune/assets/13069472/687ed454-d04f-427d-aa9c-c8b320676700)
-![ThreadTune_v1_5_Tab2E](https://github.com/geodave810/P_ThreadTune/assets/13069472/493f04a5-2827-4dbf-96a9-be419e3a3d40)
+![ThreadTune_v2_0_Tab1_2_3](https://github.com/geodave810/P_ThreadTune/assets/13069472/50671f0c-c180-415e-b738-a50e100f5d4c)
+
 <br>
 ![ThreadTune_TestRun](https://github.com/geodave810/P_ThreadTune/assets/13069472/65711d0e-00a0-4018-bdee-cf31613d7b88)
 
@@ -37,6 +35,9 @@ Using the Helix guide rail instead of the vertical centerline will require less 
 <br>
 
 This program draws the thread at 0,0,0 and only draws the threads.  A cylinder is drawn with inner radius of threads & the threads are cut flush with the top & bottom of the cylinder.  There is a file **DialogInput.txt** that saves your current dialog input parameters to set as the defaults for the next time you use the program.  This file is saved in the same folder as the running program.
+
+For the coil & spiral options, I have added profiles for circles, ellipses, polygons, rectangles & stars.  I still need to add triangles.  Here are some possibilities with the coil options.
+![CoilAndSpiralTypes](https://github.com/geodave810/P_ThreadTune/assets/13069472/a5ab66e3-7425-4452-8f5b-a2bd1bdd4a3d)
 
 I will add the little caveats of this program as I come across them.
 
@@ -70,16 +71,7 @@ TPI<br>
 
 9. There is an option for Real offsets which means the offset will be the same gap all the way around.  ChatGPT helped with the code for this & I commented the code where that was added.
 
+10. When using coils, you might run into problems if you do not use spline points in increments of 4.  I use 20 as the default which should be sufficient.
+11. I left out the Pattern option for the coils as you could not use it with spirals or coils that have an angle.  I could probably put that option back in for normal coils if it turns out to be useful for long coils.
+    
 If you find this program useful to you, consider making a donation from the link on the right or purchasing one of my audio recordings of Mountain streams from Amazon in the 2nd link on the right.
-
-
-Shield: [![CC BY-NC 4.0][cc-by-nc-shield]][cc-by-nc]
-
-This work is licensed under a
-[Creative Commons Attribution-NonCommercial 4.0 International License][cc-by-nc].
-
-[![CC BY-NC 4.0][cc-by-nc-image]][cc-by-nc]
-
-[cc-by-nc]: https://creativecommons.org/licenses/by-nc/4.0/
-[cc-by-nc-image]: https://licensebuttons.net/l/by-nc/4.0/88x31.png
-[cc-by-nc-shield]: https://img.shields.io/badge/License-CC%20BY--NC%204.0-lightgrey.svg

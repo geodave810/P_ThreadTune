@@ -540,7 +540,7 @@ def calcPts(OD, Pitch, PitHlx1):
     # global CSec_Type        # Profile Section type, 1 (Circle), 2 (Polygon), 3 (Ellipse), 4 (Rectangle) or 5 (Star)
     # global Cposition        # 1st character is 1 (inside), 2 (On Center) or 3 (Outside)
     # global CPosRect         # Rectangle Profile vertical position 1 = Top, 2 = Middle, 3 = Bottom
-def DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, CellipseY, Cposition, CPosRect, Crect_Wid, Crect_Ht, CStarOut_Rad, CStarIn_Rad, CStar_Num, Cpitch, Crevs, Cheight, sPts, GRC_Char, RL_thread, Cangle):
+def DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, CellipseY, Cposition, CPosRect, Crect_Wid, Crect_Ht, CStarOut_Rad, CStarIn_Rad, CStar_Num, Cpitch, Crevs, Cheight, sPts, GRC_Char, RL_thread, Cangle, CvertPos):
     F_OD = float(Cdiameter)     # Starting Diameter of coil or spiral
     F_Rad = F_OD / 2.0
     F_Rad1 = F_Rad * .1
@@ -553,6 +553,7 @@ def DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, Ce
     numSides = int(CpolySides)
     I_num_points = int(CStar_Num)
     F_pitch = float(Cpitch)
+    R_Max1 = (F_Rad + F_ID_Rad) * .1
     #ui.messageBox(f'CoilType = {CoilType}\n CellipseX = {CellipseX}\nCellipseY = {CellipseY}')
 # Create a new 3D sketch.
     sketches = subComp1.sketches
@@ -560,41 +561,74 @@ def DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, Ce
     sketch_Profile.name = "Coil_Profile"
     F_Pos = F_Rad1
     S_Type = 'Circle_'
+    S_Pos = 'CtrPos_'
+# Inside position moves the section inward & outside position moves the section outward, backwards from what I originally thought
     if Cposition == '1':
+        S_Pos = 'InPos_'
         F_Pos = F_Rad1 - F_ID_Rad1
     elif Cposition == '3':
+        S_Pos = 'OutPos_'
         F_Pos = F_Rad1 + F_ID_Rad1
 # Profile Section type, 1 (Circle), 2 (Polygon), 3 (Ellipse), 4 (Rectangle) or 5 (Star)
     if CSec_Type == '1':
         DrawCircle(sketch_Profile, F_Pos, F_ID_Rad1)
     if CSec_Type == '2':
         S_Type = "Poly_" + CpolySides + "_Sides_"
-        DrawPolygon(sketch_Profile, F_Pos, numSides, F_ID_Rad1)
+# Only run through this code if we are not locating the polygon on the center point
+        if Cposition != '2':
+# 1st pass through DrawPolygon we calculate the Left & Right intersection points of X-axis & polygon
+            X_Pts = DrawPolygon(sketch_Profile, F_Rad1, numSides, F_ID_Rad1, CvertPos, 0) # Returns 2 intersection points of polygon with X-axis
+            if X_Pts:
+                X_Min = X_Pts[0]
+                R_Max1 = X_Pts[1]
+                X_LtDist = F_Rad1 - X_Min
+                X_RtDist = R_Max1 - F_Rad1
+    # ReCompute the Left side & Right side offset for polygon location
+                if Cposition == '1':
+                    F_Pos = F_Rad1 - X_RtDist
+                elif Cposition == '3':
+                    F_Pos = F_Rad1 + X_LtDist
+        X_Pts = DrawPolygon(sketch_Profile, F_Pos, numSides, F_ID_Rad1, CvertPos, 1)
+        if X_Pts:
+            F_Rad1 = X_Pts[0]           # This is to keep R_Max1 & F_Rad1 being the same number when Cposition = '3'
+            R_Max1 = X_Pts[1]
     elif CSec_Type == '3':
         S_Type = 'Ellipse_'
-        X_Dist1 = (float(CellipseX) / 2.0) * .1
-        Y_Dist1 = (float(CellipseY) / 2.0) * .1
+        X_Dist1 = float(CellipseX) * .1
+        Y_Dist1 = float(CellipseY) * .1
+        F_Pos = F_Rad1
+        if Cposition == '1':
+            F_Pos = F_Rad1 - (X_Dist1 / 2)
+        elif Cposition == '3':
+            F_Pos = F_Rad1 + (X_Dist1 / 2)
         DrawEllipse(sketch_Profile, F_Pos, X_Dist1, Y_Dist1)
     elif CSec_Type == '4':
         S_Type = "Rect_" + Crect_Wid + "mm_Wid_" + Crect_Ht + "mm_Ht_"
-        DrawRectangle(sketch_Profile, F_Rad1, Crect_Wid, Crect_Ht, Cposition, CPosRect)
+        X_Pts = DrawRectangle(sketch_Profile, F_Rad1, Crect_Wid, Crect_Ht, Cposition, CPosRect)
+        F_Rad1 = X_Pts[0]
+        R_Max1 = X_Pts[1]
     elif CSec_Type == '5':
         S_Type = "Star_"
         F_OutRad = float(CStarOut_Rad) * .1
         F_InRad = float(CStarIn_Rad) * .1
+        F_Pos = F_Rad1
+        if Cposition == '1':
+            F_Pos = F_Rad1 - F_InRad
+        elif Cposition == '3':
+            F_Pos = F_Rad1 + F_InRad
         DrawStar(sketch_Profile, F_Pos, F_OutRad, F_InRad, I_num_points)
+        R_Max1 = F_Rad1 + F_InRad
     prof = sketch_Profile.profiles.item(0)
 # Get the profiles in the sketch
     xyPlane = subComp1.xYConstructionPlane
     sketch_Helix = sketches.add(xyPlane)
     sketch_Helix.name = "Sketch_Helix"
-    R_Min = F_Rad - F_ID_Rad
     if CoilType == '4':
-        subComp1.name = "Spiral_" + S_Type + Cdiameter
-        DrawSpiral(subComp1, sketch_Helix, R_Min, F_Rad, F_pitch, I_revs, sPts, RL_thread, prof)
+        subComp1.name = "Spiral_" + S_Pos + S_Type + Cdiameter
+        DrawSpiral(subComp1, sketch_Helix, F_Rad1, F_pitch, I_revs, sPts, RL_thread, prof)
     else:
-        subComp1.name = "Coil_" + S_Type + Cdiameter
-        DrawAngledCoil(subComp1, sketch_Helix, F_Rad + F_ID_Rad, F_Rad, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType)
+        subComp1.name = "Coil_" + S_Pos + S_Type + Cdiameter
+        DrawAngledCoil(subComp1, sketch_Helix, R_Max1, F_Rad1, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType)
     b_name = subComp1.name
     bsubComp1_bodies = subComp1.bRepBodies              # Collect the bodies used in our component
     numBodies = bsubComp1_bodies.count                  # Get a count of the bodies used, should be 3
@@ -607,8 +641,7 @@ def DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, Ce
 # Height and Pitch (aldo has optional angle)
 # (Done) Spiral
 ##########################################################################
-def DrawSpiral(subComp1, sketch_Helix, R_Min, Rad, pitch, revolutions, num_points_per_revolution, RL_thread, prof):
-    Rad1 = Rad * .1
+def DrawSpiral(subComp1, sketch_Helix, Rad1, pitch, revolutions, num_points_per_revolution, RL_thread, prof):
     pitch1 = pitch * .1
     points = adsk.core.ObjectCollection.create()
 # Determine the direction of rotation
@@ -638,12 +671,14 @@ def DrawSpiral(subComp1, sketch_Helix, R_Min, Rad, pitch, revolutions, num_point
 # 2 Revolution and Pitch (also has optional angle)
 # 3 (done) Height and Pitch (also has optional angle)
 # 4 (done) Spiral
-def DrawAngledCoil(subComp1, sketch_Helix, R_Max, F_Rad, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType):
+#   DrawAngledCoil(subComp1, sketch_Helix, F_Rad + F_ID_Rad, F_Rad, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType)
+#DrawAngledCoil(subComp1, sketch_Helix, R_Max, F_Rad, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType) F_Rad = Path Radius, R_Max = Guide Rail Radius
+def DrawAngledCoil(subComp1, sketch_Helix, R_Max1, F_Rad1, F_pitch, I_revs, Ht, F_angle, sPts, prof, CoilType):
 # Convert angle from degrees to radians
     angle = math.radians(F_angle)
 # Convert diameter and pitch from mm to cm
-    rad0 = F_Rad * .1
-    rad1 = R_Max * .1
+    rad0 = F_Rad1           # F_Rad = Path Radius
+    rad1 = R_Max1           # R_Max = Guide Rail Radius
     pitch = F_pitch * .1
     Ht1 = Ht * .1
     if CoilType == '1':
@@ -684,20 +719,56 @@ def DrawCircle(sketch_Profile, F_Pos, F_ID_Rad1):
     center_point = adsk.core.Point3D.create(F_Pos, 0, 0)
     sketch_Profile.sketchCurves.sketchCircles.addByCenterRadius(center_point, F_ID_Rad1)
 ##########################################################################
-def DrawPolygon(sketch_Profile, F_Pos, numSides, radius):
+def DrawPolygon(sketch_Profile, F_Pos, numSides, radius, CvertPos, iflag):
     centerX = F_Pos             # Center X coordinate of Polygon
     centerY = 0
-# Draw the polygon
+# Define the initial angle to adjust the position of the vertices
+    initialAngle = 0 # 0 degrees Right vertex
+    if CvertPos == '2':
+        initialAngle = - math.pi / 2 # -90 degrees Top vertex
+    elif CvertPos == '3':
+        initialAngle = math.pi # 180 degrees Left vertex
+    elif CvertPos == '4':
+        initialAngle = math.pi / 2 # 90 degreesBottom vertex
+    elif CvertPos == '5':
+        initialAngle = math.pi / 8 # 22.5 degrees for 8 sided
+    elif CvertPos == '6':
+        initialAngle = math.pi / 4 # 45.0 degrees for 12 sided
     angle = 2 * math.pi / numSides
     points = []
     for i in range(numSides):
-        x = centerX + radius * math.cos(i * angle)
-        y = centerY + radius * math.sin(i * angle)
+        x = centerX + radius * math.cos(i * angle + initialAngle)
+        y = centerY + radius * math.sin(i * angle + initialAngle)
         points.append(adsk.core.Point3D.create(x, y, 0)) # Center point is (x, y) on the XY plane, z is constant
-# Create the lines between the points
-    lines = sketch_Profile.sketchCurves.sketchLines
+# Create the lines between the points only on 2nd pass through this routine
+    if iflag == 1:
+        lines = sketch_Profile.sketchCurves.sketchLines
+        for i in range(numSides):
+            lines.addByTwoPoints(points[i], points[(i + 1) % numSides])
+# Find the intersection points with the X-axis (y=0)
+    X_Pts = []
     for i in range(numSides):
-        lines.addByTwoPoints(points[i], points[(i + 1) % numSides])
+        p1 = points[i]
+        p2 = points[(i + 1) % numSides]
+# Calculate intersection with the X-axis (y=0)
+        if (p1.y >= 0 > p2.y) or (p1.y <= 0 < p2.y):
+            t = p1.y / (p1.y - p2.y)
+            xIntersect = p1.x + t * (p2.x - p1.x)
+            X_Pts.append(xIntersect)
+    # Display the intersection points
+    if len(X_Pts) >= 2:
+        X10 = X_Pts[0]
+        X20 = X_Pts[1]
+        if X10 > X20:
+            X_Min = X20
+            X_Max = X10
+        else:
+            X_Min = X10
+            X_Max = X20
+        X_MinMax = [X_Min, X_Max]
+        return (X_MinMax)
+    else:
+        return (False)
 ##########################################################################
 def DrawEllipse(sketch_Profile, F_Pos, Major_X, Minor_Y):
 # Define the ellipse parameters.
@@ -714,15 +785,13 @@ def DrawRectangle(sketch_Profile, F_Rad1, Crect_Wid, Crect_Ht, Cposition, CPosRe
     F_Wid12 = F_Wid1 / 2.0
     F_Ht12 = F_Ht1 / 2.0
     F_Pos = F_Rad1
-    X0 = F_Pos - F_Wid1             # default 3 Horizontal position Outside edge
-    X1 = F_Pos
-    #ui.messageBox(f'F_Rad1 = {F_Rad1}\nCrect_Wid = {Crect_Wid}\nCrect_Ht = {Crect_Ht}')
+    X0 = F_Pos             # default 3 Horizontal position Outside edge
+    X1 = F_Pos + F_Wid1
     if Cposition == '1':
-        X0 = F_Pos
-        X1 = F_Pos + F_Wid1
+        X0 = F_Pos - F_Wid1
     elif Cposition == '2':
         X0 = F_Pos - F_Wid12
-        X1 = F_Pos + F_Wid12
+    X1 = X0 + F_Wid1
     Y0 = 0                          # default 3 vertical position Bottom
     Y1 = -F_Ht1
 # 1 = Top, 2 = Middle 3, = Bottom
@@ -738,6 +807,8 @@ def DrawRectangle(sketch_Profile, F_Rad1, Crect_Wid, Crect_Ht, Cposition, CPosRe
     P4 = adsk.core.Point3D.create(X0, Y1, 0)
     points = [P1, P2, P3, P4, P1]              # Create a list of points for single thread profile
     draw_lines_between_points(sketch_Profile, points, 0)
+    X_Pts = [X0 + F_Wid12, X1]
+    return (X_Pts)
 ##########################################################################
 def DrawStar(sketch_Profile, F_Pos, outer_radius, inner_radius, num_points):
     centerX = F_Pos             # Center X coordinate of Polygon
@@ -1131,6 +1202,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     global GRC_Char         # Coil GuideRail Type LongHelix or Pattern
                             # Pattern will not work with Spiral or angle used with other coil types
     global Cdia_Sect        # Diameter of Circle or Polygon Profile for Coil
+    #global CvertPos        # polygon vertext position
     #global CpolySides       # Number of Sides for Polygon Profile
     #global CellipseX        # Ellipse X Diameter
     #global CellipseY        # Ellipse Y Diameter (actually the along Z-axis if looking in 3D)
@@ -1172,9 +1244,19 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # Create tab input 3
     tabCmdInput3 = inputs.addTabCommandInput('_Coils', 'Coil Options')
     tab3ChildInputs = tabCmdInput3.children
+    # dropdownInput4 = tab3ChildInputs.addDropDownCommandInput('CoilType', 'Coil Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    # dropdown4Items = dropdownInput4.listItems
+    # dropdown4Items.add('1 Revolution and Height', False, '')
+    # dropdown4Items.add('2 Revolution and Pitch', False, '')
+    # dropdown4Items.add('3 Height and Pitch', False, '')
+    # dropdown4Items.add('4 Spiral', False, '')
+    # I_CoilType = int(CoilType) - 1
+    # dropdown4Items[I_CoilType].isSelected = True
+    #dropdownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    #        Met_ID = dropdownCommand_MInput.selectedItem.index
     Fname = current_folder + '\\' + 'DialogInput_V9.txt'     # This is the Default Input file from previous entries
     EFname = current_folder + '\\' + 'EDialogInput_V9.txt'   # This is the Default Input file from previous entries
-    CFname = current_folder + '\\' + 'Coil_DialogInput_V9.txt'
+    CFname = current_folder + '\\' + 'Coil_DialogInput_V10.txt'
     if file_exists(Fname):
         DialogName = open(Fname, 'r')
 # Read variables from the text file if it exists
@@ -1315,14 +1397,15 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             Cposition = csvData[9]
             Cdia_Sect = csvData[10]
             CpolySides = csvData[11]
-            CellipseX = csvData[12]
-            CellipseY = csvData[13]
-            Crect_Wid = csvData[14]
-            Crect_Ht = csvData[15]
-            CPosRect = csvData[16]
-            CStarOut_Rad = csvData[17]
-            CStarIn_Rad = csvData[18]
-            CStar_Num = csvData[19]
+            CvertPos = csvData[12]
+            CellipseX = csvData[13]
+            CellipseY = csvData[14]
+            Crect_Wid = csvData[15]
+            Crect_Ht = csvData[16]
+            CPosRect = csvData[17]
+            CStarOut_Rad = csvData[18]
+            CStarIn_Rad = csvData[19]
+            CStar_Num = csvData[20]
     else:
         CoilType = '2'
         Cdiameter = '24.0'
@@ -1336,6 +1419,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         Cposition = '2'
         Cdia_Sect = '2.0'
         CpolySides = '6'
+        CvertPos = '1'
         CellipseX = '1.0'
         CellipseY = '2.0'
         Crect_Wid = '3'
@@ -1445,7 +1529,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             csvfile.write(OutString)
         csvfile.close
 # Create a dropdown command input
-    dropdown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads to Create:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown0CommandInput = tab1ChildInputs.addDropDownCommandInput('WhatType', 'Threads or Coils to Create:', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown0Items = dropdown0CommandInput.listItems
     dropdown0Items.add('1 - Single Thread Only', False, '')
     dropdown0Items.add('2 - Bolt Thread', False, '')
@@ -1453,18 +1537,8 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     dropdown0Items.add('4 - Nut Thread', False, '')
     dropdown0Items.add('5 - Bolt & Nut Threads', False, '')
     dropdown0Items.add('6 - Coils', False, '')
-    if TY_Char == '1':
-        dropdown0Items[0].isSelected = True
-    if TY_Char == '2':
-        dropdown0Items[1].isSelected = True
-    elif TY_Char == '3':
-        dropdown0Items[2].isSelected = True
-    elif TY_Char == '4':
-        dropdown0Items[3].isSelected = True
-    elif TY_Char == '5':
-        dropdown0Items[4].isSelected = True
-    elif TY_Char == '6':
-        dropdown0Items[5].isSelected = True
+    I_TY_Char = int(TY_Char) - 1
+    dropdown0Items[I_TY_Char].isSelected = True
     dropdownInputEM = tab1ChildInputs.addDropDownCommandInput('EnglishMetric', 'English or Metric', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdownEMItems = dropdownInputEM.listItems
 # Test what was used for the Thread direction on previous run dropdownCommand_MInput
@@ -1479,6 +1553,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     group_Minput.isExpanded = False
     childM = group_Minput.children
     dropdownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    #        Met_ID = dropdownCommand_MInput.selectedItem.index
     MFname = current_folder + '\\' + 'metric_V3.csv'        #Standard Metric sizes from M3 - M30
     if file_exists(MFname):
 # Read the Metric Sizes file
@@ -1582,12 +1657,8 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     dropdown3Items.add('1 Start', False, '')
     dropdown3Items.add('2 Start', False, '')
     dropdown3Items.add('4 Start', False, '')
-    if ST_Char == '1':
-        dropdown3Items[0].isSelected = True
-    elif ST_Char == '2':
-        dropdown3Items[1].isSelected = True
-    else:
-        dropdown3Items[2].isSelected = True
+    I_ST_Char = int(ST_Char) - 1
+    dropdown3Items[I_ST_Char].isSelected = True
     if CT_Check == 'Y':
         tab1ChildInputs.addBoolValueInput('_ChamThread', 'Chamfer Top of Thread', True, '', True)
     else:
@@ -1612,14 +1683,8 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     dropdown4Items.add('2 Revolution and Pitch', False, '')
     dropdown4Items.add('3 Height and Pitch', False, '')
     dropdown4Items.add('4 Spiral', False, '')
-    if CoilType == '1':
-        dropdown4Items[0].isSelected = True
-    elif CoilType == '2':
-        dropdown4Items[1].isSelected = True
-    elif CoilType == '3':
-        dropdown4Items[2].isSelected = True
-    elif CoilType == '4':
-        dropdown4Items[3].isSelected = True
+    I_CoilType = int(CoilType) - 1
+    dropdown4Items[I_CoilType].isSelected = True
     tab3ChildInputs.addTextBoxCommandInput('Cdiameter','Coil Diameter (mm): ',Cdiameter, 1, False )
     tab3ChildInputs.addTextBoxCommandInput('Crevs','Coil Revolutions: ',Crevs, 1, False )
     tab3ChildInputs.addTextBoxCommandInput('Cheight', 'Coil Height (mm): ', Cheight, 1, False)
@@ -1644,60 +1709,53 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     dropdown6Items.add('3 Ellipse', False, '')
     dropdown6Items.add('4 Rectangle', False, '')
     dropdown6Items.add('5 Star', False, '')
-    if CSec_Type == '1':
-        dropdown6Items[0].isSelected = True
-    elif CSec_Type == '2':
-        dropdown6Items[1].isSelected = True
-    elif CSec_Type == '3':
-        dropdown6Items[2].isSelected = True
-    elif CSec_Type == '4':
-        dropdown6Items[3].isSelected = True
-    elif CSec_Type == '5':
-        dropdown6Items[4].isSelected = True
-    #ui.messageBox(f'Cposition = "{Cposition}"')
+    I_CSec_Type = int(CSec_Type) - 1
+    dropdown6Items[I_CSec_Type].isSelected = True
     dropdownInput7 = tab3ChildInputs.addDropDownCommandInput('Cposition', 'Section Position:', adsk.core.DropDownStyles.TextListDropDownStyle)
     dropdown7Items = dropdownInput7.listItems
     dropdown7Items.add('1 Inside', False, '')
     dropdown7Items.add('2 On Center', False, '')
     dropdown7Items.add('3 Outside', False, '')
-    if Cposition == '1':
-        dropdown7Items[0].isSelected = True
-    elif Cposition == '2':
-        dropdown7Items[1].isSelected = True
-    elif Cposition == '3':
-        dropdown7Items[2].isSelected = True
+    I_Cposition =  int(Cposition) - 1
+    dropdown7Items[I_Cposition].isSelected = True
 # Circle & Polygon Group
     group_T3_1_input = tab3ChildInputs.addGroupCommandInput('group_T3_1_input', 'Circle, Ellipse & Polygon Group')
     group_T3_1_input.isExpanded = False
     child_T3_1 = group_T3_1_input.children
     child_T3_1.addTextBoxCommandInput('Cdia_Sect','Section Diameter (mm): ',Cdia_Sect, 1, False )
     child_T3_1.addTextBoxCommandInput('CpolySides', '# of Sides of Polygon Section: ', CpolySides, 1, False)
-    child_T3_1.addTextBoxCommandInput('CellipseX', 'Diameter of Ellipse on X-Axis: ', CellipseX, 1, False)
-    child_T3_1.addTextBoxCommandInput('CellipseY', 'Diameter of Ellipse on Y-Axis: ', CellipseY, 1, False)
+    dropdownInput8 = child_T3_1.addDropDownCommandInput('CvertPos', 'Vertex Position:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown8Items = dropdownInput8.listItems
+    dropdown8Items.add('1 - Right vertex', False, '')
+    dropdown8Items.add('2 - Top vertex', False, '')
+    dropdown8Items.add('3 - Left vertex', False, '')
+    dropdown8Items.add('4 - Bottom vertex', False, '')
+    dropdown8Items.add('5 - 22.5Deg vertex (8 sided)', False, '')
+    dropdown8Items.add('6 - 45.0Deg vertex (12 Sided)', False, '')
+    I_VertPos = int(CvertPos) - 1
+    dropdown8Items[I_VertPos].isSelected = True
+    child_T3_1.addTextBoxCommandInput('CellipseX', 'Diameter of Ellipse on X-Axis (mm): ', CellipseX, 1, False)
+    child_T3_1.addTextBoxCommandInput('CellipseY', 'Diameter of Ellipse on Y-Axis (mm): ', CellipseY, 1, False)
 # Rectangle Group
     group_T3_2_input = tab3ChildInputs.addGroupCommandInput('group_T3_2_input', 'Rectangle Group')
     group_T3_2_input.isExpanded = False
     child_T3_2 = group_T3_2_input.children
-    child_T3_2.addTextBoxCommandInput('Crect_Wid','Rectangle Width: ',Crect_Wid, 1, False )
-    child_T3_2.addTextBoxCommandInput('Crect_Ht','Rectangle Height: ',Crect_Ht, 1, False )
+    child_T3_2.addTextBoxCommandInput('Crect_Wid','Rectangle Width (mm): ',Crect_Wid, 1, False )
+    child_T3_2.addTextBoxCommandInput('Crect_Ht','Rectangle Height (mm): ',Crect_Ht, 1, False )
     
-    dropdownInput8 = child_T3_2.addDropDownCommandInput('CPosRect', 'Rectangle Position:', adsk.core.DropDownStyles.TextListDropDownStyle)
-    dropdown8Items = dropdownInput8.listItems
-    dropdown8Items.add('1 Top', False, '')
-    dropdown8Items.add('2 Middle', False, '')
-    dropdown8Items.add('3 Bottom', False, '')
-    if CPosRect == '1':
-        dropdown8Items[0].isSelected = True
-    elif CPosRect == '2':
-        dropdown8Items[1].isSelected = True
-    elif CPosRect == '3':
-        dropdown8Items[2].isSelected = True
+    dropdownInput9 = child_T3_2.addDropDownCommandInput('CPosRect', 'Rectangle Position:', adsk.core.DropDownStyles.TextListDropDownStyle)
+    dropdown9Items = dropdownInput9.listItems
+    dropdown9Items.add('1 Top', False, '')
+    dropdown9Items.add('2 Middle', False, '')
+    dropdown9Items.add('3 Bottom', False, '')
+    I_CPosRect = int(CPosRect) - 1
+    dropdown9Items[I_CPosRect].isSelected = True
 #def draw_star(sketch, center, outer_radius, inner_radius, num_points):
     group_T3_3_input = tab3ChildInputs.addGroupCommandInput('group_T3_3_input', 'Star Group')
     group_T3_3_input.isExpanded = False
     child_T3_3 = group_T3_3_input.children
-    child_T3_3.addTextBoxCommandInput('CStarOut_Rad','Outer Radius: ',CStarOut_Rad, 1, False )
-    child_T3_3.addTextBoxCommandInput('CStarIn_Rad','Inner Radius: ',CStarIn_Rad, 1, False )
+    child_T3_3.addTextBoxCommandInput('CStarOut_Rad','Outer Radius (mm): ',CStarOut_Rad, 1, False )
+    child_T3_3.addTextBoxCommandInput('CStarIn_Rad','Inner Radius (mm): ',CStarIn_Rad, 1, False )
     child_T3_3.addTextBoxCommandInput('CStar_Num','Number of Star Points: ',CStar_Num, 1, False )
     group_T3_1_input.isExpanded = False
     group_T3_2_input.isExpanded = False
@@ -1709,6 +1767,10 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         group_T3_2_input.isExpanded = True
     elif I_Type == 4:
         group_T3_3_input.isExpanded = True
+# if Coils Options was selected last time, active that tab
+    if TY_Char == '6':
+        tabCmdInput3.activate()
+# Set tab3 active when coils if coils option was selected last time.
     CalcThread(0)
 # Connect to event handlers
     futil.add_handler(args.command.execute, command_execute, local_handlers=local_handlers)
@@ -1780,8 +1842,10 @@ def command_execute(args: adsk.core.CommandEventArgs):
 # Circle & Polygon Group
     Cdia_Sect: adsk.core.TextBoxCommandInput = inputs.itemById('Cdia_Sect')
     CpolySides: adsk.core.TextBoxCommandInput = inputs.itemById('CpolySides')
+    dropdownInput8 = inputs.itemById('CvertPos')
     Cdia_Sect = Cdia_Sect.text
     CpolySides = CpolySides.text
+    CvertPos = dropdownInput8.selectedItem.name[0]
     CellipseX: adsk.core.TextBoxCommandInput = inputs.itemById('CellipseX')
     CellipseY: adsk.core.TextBoxCommandInput = inputs.itemById('CellipseY')
     CellipseX = CellipseX.text
@@ -1791,8 +1855,8 @@ def command_execute(args: adsk.core.CommandEventArgs):
     Crect_Ht: adsk.core.TextBoxCommandInput = inputs.itemById('Crect_Ht')
     Crect_Wid = Crect_Wid.text
     Crect_Ht = Crect_Ht.text
-    dropdownInput8 = inputs.itemById('CPosRect')
-    CPosRect = dropdownInput8.selectedItem.name[0]          #1 = Top, 2 = Middle, 3 = Bottom
+    dropdownInput9 = inputs.itemById('CPosRect')
+    CPosRect = dropdownInput9.selectedItem.name[0]          #1 = Top, 2 = Middle, 3 = Bottom
 # Star Group
     CStarOut_Rad: adsk.core.TextBoxCommandInput = inputs.itemById('CStarOut_Rad')
     CStarIn_Rad: adsk.core.TextBoxCommandInput = inputs.itemById('CStarIn_Rad')
@@ -1922,7 +1986,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
 # 6 - Coils
     iTY_Char = int(TY_Char)
     if iTY_Char == 6:
-        OutString1 = Cposition + ',' + Cdia_Sect + ',' + CpolySides + ',' + CellipseX + ',' + CellipseY + ',' + Crect_Wid +',' + Crect_Ht + ',' + CPosRect + ',' +  CStarOut_Rad + ',' + CStarIn_Rad + ',' + CStar_Num
+        OutString1 = Cposition + ',' + Cdia_Sect + ',' + CpolySides + ',' + CvertPos + ',' + CellipseX + ',' + CellipseY + ',' + Crect_Wid +',' + Crect_Ht + ',' + CPosRect + ',' +  CStarOut_Rad + ',' + CStarIn_Rad + ',' + CStar_Num
         OutString = CoilType + ',' + Cdiameter +',' + Crevs + ',' + Cheight + ',' + Cpitch + ',' + Cangle + ',' + CsplinePts + ',' + GRC_Char + ',' + CSec_Type + ',' + OutString1
         with open(CFname, 'w') as csvfile:
             csvfile.write(OutString)
@@ -1930,7 +1994,7 @@ def command_execute(args: adsk.core.CommandEventArgs):
         Cspts = int(CsplinePts)
         Coil_Name = "Coil_" + Cdiameter
         subComp1 = CreateNewComponent(Coil_Name)
-        DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, CellipseY, Cposition, CPosRect, Crect_Wid, Crect_Ht, CStarOut_Rad, CStarIn_Rad, CStar_Num, Cpitch, Crevs, Cheight, Cspts, GRC_Char, RL_Char, Cangle)
+        DrawCoil(subComp1, CoilType, Cdiameter, CSec_Type, CpolySides, CellipseX, CellipseY, Cposition, CPosRect, Crect_Wid, Crect_Ht, CStarOut_Rad, CStarIn_Rad, CStar_Num, Cpitch, Crevs, Cheight, Cspts, GRC_Char, RL_Char, Cangle, CvertPos)
     else:
         subComp1 = CreateNewComponent(Body_Name)
         if iTY_Char != 4:
@@ -2041,11 +2105,11 @@ def command_input_changed(args: adsk.core.InputChangedEventArgs):
     if a_ID == "CSec_Type":
         #ui.messageBox('if a_ID == "CSec_Type":')
         I_Type = dropdownInput6.selectedItem.index
-    # dropdown6Items.add('1 Circle', False, '')
-    # dropdown6Items.add('2 Polygon', False, '')
-    # dropdown6Items.add('3 Ellipse', False, '')
-    # dropdown6Items.add('4 Rectangle', False, '')
-    # dropdown6Items.add('5 Star', False, '')
+    # 1 Circle
+    # 2 Polygon
+    # 3 Ellipse
+    # 4 Rectangle
+    # 5 Star
         group_T3_1_input.isExpanded = False
         group_T3_2_input.isExpanded = False
         group_T3_3_input.isExpanded = False

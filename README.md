@@ -18,7 +18,7 @@ How this works is that it draws a profile of one thread for the Helix & Pattern 
 Since the thread profiles are on the timeline, you can fine tune these even further by changing the thread profiles even further like changing one or more of the lines in the profile to a curve between the points.  The start of each helix just needs to attach to part of the sweeping thread.
 
 This program is setup as an Add-In in Autodesk Fusion 360.  To install this, copy the file structure to:
-C:\Users\<UserName>\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns
+C:\Users\\<UserName>\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns
 After you copied the files, your folder structure should look like this.<br>
 ![P_ThreadTuneFolder](https://github.com/geodave810/P_ThreadTune/assets/13069472/588973b7-f680-4212-b6b8-77f84619f901)<br>
 To run the program, click on Utilites, then ADD-INS, then Add-Ins tab.  You should see the program ThreadTune in the list under **My Add-Ins**

@@ -3,7 +3,7 @@ Fine-Tune your Screw Thread Designs in Autodesk Fusion 360 and also Coils & Spir
 
 This was formally called **ThreadTune**, but I changed the name of it after finding another repository on github by the same name.
 
-P_ThreadTune starting with v1.5 now works with both Metric & English threads.  If your units for the active drawing is Ft or In, it will default to English.  If it is a metric unit, it will default to Metric threads & expand the appropriate Metric or English thread options on Tab1 & Tab2.  You can still change it to English or Metric within the dialog box & expand or contract the Metric or English options on either tab.
+P_ThreadTune starting with v1.5 now works with both Metric & English threads, except the **Coil Options Tab* still only works with mm's.  If your units for the active drawing is Ft or In, it will default to English.  If it is a metric unit, it will default to Metric threads & expand the appropriate Metric or English thread options on Tab1 & Tab2.  You can still change it to English or Metric within the dialog box & expand or contract the Metric or English options on either tab.
 
 This started out to be just a way to be able to give more adjustable threads by varying the Diameter, Pitch Height and Angle like I can easily do using openSCAD.  This gave me a lot of flexibility with tolerance fit between male & female threads.  The formula for the thread profile is pretty simple to generate a single profile.  I used this page for reference.
 https://en.wikipedia.org/wiki/ISO_metric_screw_thread
@@ -24,24 +24,24 @@ After you copied the files, your folder structure should look like this.<br>
 To run the program, click on Utilites, then ADD-INS, then Add-Ins tab.  You should see the program ThreadTune in the list under **My Add-Ins**
 Click on the program & you should see a thread icon in the ADD-INS panel.  To run the program, just click on that thread icon.
 
-The most common use of this program for me anyway is to have a different diameter for the Male threads & the Female threads in order to get a good tolerance in 3D prints.  For example, using 6mm diameter threads with a pitch of 1 & angle of 30, then a 5.5mm diameter threads with same parameters you will get a tolerance of 0.25mm all the way around the vertical part of the threads, but a little less around the angled part of the threads.<br>
-![ThreadTune_v2_0_Tab1_2_3](https://github.com/geodave810/P_ThreadTune/assets/13069472/50671f0c-c180-415e-b738-a50e100f5d4c)
+The most common use of this program for me anyway is to have a different diameter for the Male threads & the Female threads in order to get a good tolerance in 3D prints.  For example, using 8mm diameter threads with a pitch of 1.25, an angle of 30, and a gap 0.3mm between Male & Female threads gives then a 8.6mm diameter female threads. With these parameters you will get a tolerance of 0.3mm all the way around the vertical part of the threads, but a little less around the angled part of the threads.  If you use real offsets for the gaps between male & female threads, you will get exactly the same gap you specified all the way around the threads.  There is one caveat to using the real offsets in that sometimes larger offsets will not work unless you increase the helix pitch.  That is the main reason I created a separate pitch for the helix & threads.<br>
+![ThreadTune_v2_1_Tab123](https://github.com/geodave810/P_ThreadTune/assets/13069472/e7ac7196-e28f-4c29-b697-91e2e0ac20e2)
 
 <br>
 ![ThreadTune_TestRun](https://github.com/geodave810/P_ThreadTune/assets/13069472/65711d0e-00a0-4018-bdee-cf31613d7b88)
 
-Using the Helix guide rail instead of the vertical centerline will require less points for the spline points to be accurate.  18 - 36 spline points is usually sufficient with the Helix guiderail, but you will need at least 36-45 spline points when using the vertical centerline for it to be accurate.  Using a different angle for the top & bottom of the thread you will need to use the vertical centerline for it to work.  The exception here is using 0 for the top and/or bottom angle type of guide rail will work.  If there was a helix you could draw in sketch mode for fusion 360 which there does not seem to be at the moment, the curvature would probably be quite accurate.  AutoCAD seems to have the ability to draw a helix, so maybe it will be added one day.<br>
+There are 3 options for drawing the helix for these threads, Helix, Patterh and LongHelix. The Pattern option will give you the quickest & most accurate threads.  All 3 options use the sweep command use a Path + GuideRail with the thread profile swept along the path.  The Helix option draws a single revolution of the helix & the thread profiles for all the threads.  The Pattern option draws a single revolution of the helix & single profile, sweeps one revolution & then does a pattern along a path to create all the threads from one single thread revolution.  The LongHelix creates a helix for the full length of the threads using a single thread profile.  The LongHelix is the slowest & if threads are very long or you use too many spline points can really bog down your computer.  18 - 36 spline points is usually sufficient with the Helix guiderail. If there was a helix you could draw in sketch mode for fusion 360 which there does not seem to be at the moment, the curvature would probably be quite accurate.  AutoCAD seems to have the ability to draw a helix, so maybe it will be added one day. After adding the Coil Options tab, I changed the default spline points to 20 for coils as evely divisable by 4 works better for those.  This gives a spline point on each quadrant of spline.<br>
 ![P_Thread_Types_800x600](https://github.com/geodave810/P_ThreadTune/assets/13069472/6a7c3e2f-fd54-495e-970b-8786e7d4d83f)
 <br>
 
-This program draws the thread at 0,0,0 and only draws the threads.  A cylinder is drawn with inner radius of threads & the threads are cut flush with the top & bottom of the cylinder.  There is a file **DialogInput.txt** that saves your current dialog input parameters to set as the defaults for the next time you use the program.  This file is saved in the same folder as the running program.
+This program draws the thread at 0,0,0 and only draws the threads.  A cylinder is drawn with inner radius of threads & the threads are cut flush with the top & bottom of the cylinder.  There is a file **DialogInput_V9.txt** that saves your current dialog input parameters to set as the defaults for the next time you use the program.  This file is saved in the same folder as the running program.  When using the Coils Options tab, there is a file **Coil_DialogInput_V9.txt** that saves those dialog input parameters.
 
-For the coil & spiral options, I have added profiles for circles, ellipses, polygons, rectangles & stars.  I still need to add triangles.  Here are some possibilities with the coil options.
+For the coil & spiral options, I have added profiles for circles, ellipses, polygons, rectangles & stars.  Triangles are part of the polygon set.  Here are some possibilities with the coil options.
 ![CoilAndSpiralTypes](https://github.com/geodave810/P_ThreadTune/assets/13069472/a5ab66e3-7425-4452-8f5b-a2bd1bdd4a3d)
 
 I will add the little caveats of this program as I come across them.
 
-1. Since English threads generally require more precision because the way the threads are defined, I ran into a problem if your Preferences Unit and Value Display General Precision is set to a low number like 3. This is because English threads are measured with Threads per Inch (TPI). For instance, 24 TPI would be a decimal equivalent of 0.041666667". You might want to consider changing this to 9 places in your preferences. Probably will not cause you a problem either way as I save the current preference value, set it to 9, then change it back to what you set it to after that portion of the code is run.
+1. Since English threads generally require more precision because the way the threads are defined, I ran into a problem if your Preferences Unit and Value Display General Precision is set to a low number like This is because English threads are measured with Threads per Inch (TPI). For instance, 24 TPI would be a decimal equivalent of 0.041666667". You might want to consider changing this to 9 places in your preferences. Probably will not cause you a problem either way as I save the current preference value, set it to 9, then change it back to what you set it to after that portion of the code is run.
 2. Here are the decimal equivalents of the English standard TPI values I have come across.
 TPI<br>
 32	   0.031250000<br>
@@ -59,19 +59,19 @@ TPI<br>
 6	     0.166666667<br>
 4.5    0.222222222<br>
 
-4. When creating the thread bodies, I do a join of the sweep of the thread profile & the inner cylinder.  If you have another body located where it will join that one also.  I have not gone to the trouble of hiding everything 
+3. When creating the thread bodies, I do a join of the sweep of the thread profile & the inner cylinder.  If you have another body located where it will join that one also.  I have not gone to the trouble of hiding everything 
 
-5. You can bog the program down if your spline helix has a lot of points for the sweep of the threads.  18 spline points should be sufficient.  If you have too many points, you might get an error dialog.  Use Pattern option for best results & using more spline point up to 45 does not really affect that.  Generally speaking 18 should still give you sufficient accuracy for 3D printing.
+4. You can bog the program down if your spline helix has a lot of points for the sweep of the threads.  18 spline points should be sufficient, especially when using Pattern type Helix.  If you have too many points, you might get an error dialog.  Use Pattern option for best results & using more spline point up to 45 does not really affect that.  Generally speaking 18 should still give you sufficient accuracy for 3D printing.
 
-6. This will probably work better in a new design.  If you don't, just be sure to hide any objects near origin before running.
+5. This will probably work better in a new design.  If you don't, just be sure to hide any objects near origin before running.
 
-7. For long threads, it will occasionally not create the inner cylinder to connect the threads, but with the Pattern option I have created M8x500mm with 1.25mm pitch threads without a problem.  You should only have problems with long threads using the Helix or Long Helix option.  I have occasionally had to restart fusion when something did not work right & after restarting it did.
+6. For long threads, it will occasionally not create the inner cylinder to connect the threads, but with the Pattern option I have created M8x500mm with 1.25mm pitch threads without a problem.  You should only have problems with long threads using the Helix or Long Helix option.  I have occasionally had to restart fusion when something did not work right & after restarting it worked correctly.
 
-8. I have locked up fusion & had to kill the process 2 or 3 times, but not since I rewrote the helix drawing method to draw just one revolution of the helix.  I left the long helix method in there, but would not recommend it.  Again, stick with the Pattern option.
+7. I have locked up fusion & had to kill the process 2 or 3 times, but not since I rewrote the helix drawing method to draw just one revolution of the helix.  I left the long helix method in there, but would not recommend it.  Again, stick with the Pattern option.
 
-9. There is an option for Real offsets which means the offset will be the same gap all the way around.  ChatGPT helped with the code for this & I commented the code where that was added.
+8. There is an option for Real offsets which means the offset will be the same gap all the way around.  ChatGPT helped with the code for this & I commented the code where that was added.
 
-10. When using coils, you might run into problems if you do not use spline points in increments of 4.  I use 20 as the default which should be sufficient.
-11. I left out the Pattern option for the coils as you could not use it with spirals or coils that have an angle.  I could probably put that option back in for normal coils if it turns out to be useful for long coils.
+9. When using coils, you might run into problems if you do not use spline points in increments of 4.  I use 20 as the default which should be sufficient.
+10. I left out the Pattern option for the coils as you could not use it with spirals or coils that have an angle.  I could probably put that option back in for normal coils if it turns out to be useful for long coils.
     
 If you find this program useful to you, consider making a donation from the link on the right or purchasing one of my audio recordings of Mountain streams from Amazon in the 2nd link on the right.

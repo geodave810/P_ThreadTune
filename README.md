@@ -21,7 +21,7 @@ This program is setup as an Add-In in Autodesk Fusion 360.  To install this, cop
 **C:\Users\\<UserName>\AppData\Roaming\Autodesk\Autodesk Fusion 360\API\AddIns**<br>
 After you copied the files, your folder structure should look like this.<br>
 ![P_ThreadTuneFolder](https://github.com/geodave810/P_ThreadTune/assets/13069472/588973b7-f680-4212-b6b8-77f84619f901)<br>
-You might also have to add the .vscode folder to this folder from another add-in.  The **settings.json** is the important one to add.  Here is what that .vscode folder should look like:<br>
+You might also have to add the .vscode folder to this folder from another add-in.  The **settings.json** is the important one to add.<br>Here is what that .vscode folder should look like:<br>
 ![settings_json](https://github.com/geodave810/P_ThreadTune/assets/13069472/2be8222d-ffab-4f79-8879-f5cd85db604e)
 
 To run the program, click on Utilites, then ADD-INS, then Add-Ins tab.  You should see the program ThreadTune in the list under **My Add-Ins**

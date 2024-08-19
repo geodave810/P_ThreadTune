@@ -15,6 +15,8 @@ rootComp = design.rootComponent
 ui = app.userInterface
 preferences = app.preferences
 
+ADDIN_NAME = os.path.basename(os.path.dirname(__file__))
+COMPANY_NAME = 'Bunch'
 CMD_ID = f'{config.COMPANY_NAME}_{config.ADDIN_NAME}_cmdDialog'
 CMD_NAME = 'P_ThreadTune'
 CMD_Description = 'Fine-Tune your Screw Thread Designs'
@@ -1262,8 +1264,8 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
     # dropdown4Items[I_CoilType].isSelected = True
     #dropdownCommand_MInput = childM.addDropDownCommandInput('MetType', 'Metric Thread Type:', adsk.core.DropDownStyles.TextListDropDownStyle)
     #        Met_ID = dropdownCommand_MInput.selectedItem.index
-    Fname = current_folder + '\\' + 'DialogInput_V9.txt'     # This is the Default Input file from previous entries
-    EFname = current_folder + '\\' + 'EDialogInput_V9.txt'   # This is the Default Input file from previous entries
+    Fname = current_folder + '\\' + 'DialogInput_V9.txt'     # This is the Default Metric Input file from previous entries
+    EFname = current_folder + '\\' + 'EDialogInput_V9.txt'   # This is the Default English Input file from previous entries
     CFname = current_folder + '\\' + 'Coil_DialogInput_V10.txt'
     if file_exists(Fname):
         DialogName = open(Fname, 'r')
@@ -1272,6 +1274,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             reader = list(csv.reader(f))
         DialogName.close
         for csvData in reader:
+# Read all the metric variables in from last dialog file
             diameter = csvData[0]
             pitch = csvData[1]
             pitHelix = csvData[2]
@@ -1297,7 +1300,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             Cham_Wid = csvData[21]
             Thread_Wid = csvData[22]
             Thread_Ht = csvData[23]
-# File does not exist, so set the defaults to these
+# Metric File does not exist, so set the defaults to these
     else:
         diameter = '6'
         pitch = '1'
@@ -1335,24 +1338,25 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
             Epitch = csvData[1]                     # Pitch is Threads per inch (TPI) in English
             EpitHelix = csvData[2]
             Eheight = csvData[3]
-            angleTop = csvData[4]
-            angleBot = csvData[5]
-            splinePts = csvData[6]
+# only overwrite these variables if we are initially set to English Units
+            if ME_Units == 'E':
+                angleTop = csvData[4]
+                angleBot = csvData[5]
+                splinePts = csvData[6]
+                RL_Char = csvData[8]
+                ST_Char = csvData[9]
+                Bolt_Sides = csvData[11]
+                Nut_Sides = csvData[14]
+                MF_Gap = csvData[17]
+                CT_Check = csvData[18]          # Chamfer Top of Threads
+                CN_Check = csvData[19]          # Chamfer Both ends of Nut
+                RL_Check = csvData[20]
             GRE_Char = csvData[7]
-            RL_Char = csvData[8]
-            ST_Char = csvData[9]
             TYE_Char = csvData[10]
-
-            Bolt_Sides = csvData[11]
             BoltFlat_EDia = csvData[12]
             BoltHd_EHt = csvData[13]
-            Nut_Sides = csvData[14]
             NutFlat_EDia = csvData[15]
             NutHd_EHt = csvData[16]
-            MF_Gap = csvData[17]
-            CT_Check = csvData[18]          # Chamfer Top of Threads
-            CN_Check = csvData[19]          # Chamfer Both ends of Nut
-            RL_Check = csvData[20]
             Cham_EWid = csvData[21]
             Thread_EWid = csvData[22]
             Thread_EHt = csvData[23]
@@ -1364,24 +1368,25 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
         Epitch = "20"
         EpitHelix = "20"
         Eheight = '1.0'
-        angleTop = '30'
-        angleBot = '30'
-        splinePts = '18'
+# only overwrite these variables if we are initially set to English Units
+        if ME_Units == 'E':
+            angleTop = '30'
+            angleBot = '30'
+            splinePts = '18'
+            RL_Char = 'R'
+            ST_Char = '1'
+            Bolt_Sides = '6'
+            Nut_Sides = '6'
+            MF_Gap = '0.3'
+            CT_Check = 'Y'
+            CN_Check = 'Y'
+            RL_Check = 'N'
         GRE_Char = 'P'
-        RL_Char = 'R'
-        ST_Char = '1'
         TYE_Char = '5'
- 
-        Bolt_Sides = '6'
         BoltFlat_EDia = '.4375'
         BoltHd_EHt = '.156'
-        Nut_Sides = '6'
         NutFlat_EDia = '.4375'
         NutHd_EHt = '.219'
-        MF_Gap = '0.3'
-        CT_Check = 'Y'
-        CN_Check = 'Y'
-        RL_Check = 'N'
         Cham_EWid = '0.0406'
         Thread_EWid = '0.0271'
         Thread_EHt = '0.0375'
@@ -1391,7 +1396,7 @@ def command_created(args: adsk.core.CommandCreatedEventArgs):
 # Read variables from the text file if it exists
         with DialogName as f:
             reader = list(csv.reader(f))
-        DialogName.close        
+        DialogName.close
         for csvData in reader:
             CoilType = csvData[0]
             Cdiameter = csvData[1]
